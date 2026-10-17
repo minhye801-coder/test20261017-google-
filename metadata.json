@@ -1,0 +1,6 @@
+{
+  "name": "영양자료 자동 생성기",
+  "description": "초등학교 영양교사를 위한 급식 연계 식생활 교육자료 제작 및 TV 송출 웹앱",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

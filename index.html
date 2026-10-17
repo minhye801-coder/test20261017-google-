@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>영양자료 자동 생성기</title>
+    <meta name="description" content="초등학교 영양교사를 위한 급식 연계 식생활 교육자료 제작 및 TV 송출 웹앱" />
+    <meta property="og:title" content="영양자료 자동 생성기" />
+    <meta property="og:description" content="초등학교 영양교사를 위한 급식 연계 식생활 교육자료 제작 및 TV 송출 웹앱" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <!-- 상단 네비게이션 헤더 -->
+    <header class="top-header">
+      <div class="brand-zone">
+        <div class="brand-icon" aria-hidden="true">🍱</div>
+        <div>
+          <h1 class="brand-title">영양자료 자동 생성기</h1>
+        </div>
+        <span class="brand-tag">초등 식생활 교육</span>
+      </div>
+
+      <div class="header-actions">
+        <div class="memory-notice-chip" title="개인정보 보호를 위해 브라우저 메모리에만 보관됩니다.">
+          <span>⚠️</span>
+          <span>새로고침 시 내용이 초기화됩니다 (JSON 백업 권장)</span>
+        </div>
+        <button type="button" id="btn-import-json" class="btn btn-secondary btn-sm" title="저장된 JSON 백업 파일을 불러옵니다">
+          📥 JSON 불러오기
+        </button>
+        <button type="button" id="btn-export-json" class="btn btn-mint-light btn-sm" title="작성한 자료를 JSON 파일로 안전하게 백업합니다">
+          💾 JSON 백업
+        </button>
+        <button type="button" id="btn-reset-form" class="btn btn-secondary btn-sm" title="모든 입력 폼을 초기화합니다">
+          🔄 초기화
+        </button>
+        <input type="file" id="json-file-input" accept=".json" style="display: none;" />
+      </div>
+    </header>
+
+    <!-- 메인 레이아웃 샌드박스 (좌측: 편집기 / 우측: 실시간 미리보기) -->
+    <main class="app-container">
+      <!-- ===================================================================
+           [좌측] 영양교사 편집 패널
+           =================================================================== -->
+      <section class="editor-panel" aria-label="교육자료 작성 패널">
+        <!-- 1단계: 기본 설정 (날짜 & 학년군) -->
+        <div class="panel-section">
+          <div class="section-header">
+            <h2 class="section-title">
+              <span class="section-step">1</span>
+              <span>기본 정보 설정</span>
+            </h2>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="meal-date-input" class="form-label">
+                <span>급식 일자</span>
+                <span class="req">*</span>
+              </label>
+              <input type="date" id="meal-date-input" class="form-control" required />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                <span>대상 학년군</span>
+                <span class="req">*</span>
+              </label>
+              <div class="grade-selector" role="group" aria-label="대상 학년군 선택">
+                <button type="button" class="grade-btn" data-grade="lower">저학년 (1-2)</button>
+                <button type="button" class="grade-btn active" data-grade="middle">중학년 (3-4)</button>
+                <button type="button" class="grade-btn" data-grade="upper">고학년 (5-6)</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2단계: 급식 메뉴 입력 & 주인공 메뉴 선택 -->
+        <div class="panel-section">
+          <div class="section-header">
+            <h2 class="section-title">
+              <span class="section-step">2</span>
+              <span>오늘의 급식 메뉴</span>
+            </h2>
+            <button type="button" id="btn-open-presets" class="btn btn-mint-light btn-sm">
+              ✨ 10대 추천 메뉴에서 불러오기
+            </button>
+          </div>
+
+          <div class="form-group">
+            <label for="all-menus-input" class="form-label">
+              <span>오늘의 전체 식단 메뉴 (쉼표나 줄바꿈으로 구분)</span>
+              <span class="req">*</span>
+            </label>
+            <textarea
+              id="all-menus-input"
+              class="form-control"
+              rows="2"
+              placeholder="예: 기장밥, 쇠고기미역국, 돼지갈비찜, 콩나물무침, 배추김치, 귤"
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="selected-menu-select" class="form-label">
+              <span>소개할 오늘의 주인공 음식 (이야기/영양/퀴즈의 중심)</span>
+              <span class="req">*</span>
+            </label>
+            <select id="selected-menu-select" class="form-control">
+              <option value="">식단 메뉴를 먼저 입력해주세요</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 3단계: 오늘의 음식 이야기 -->
+        <div class="panel-section">
+          <div class="section-header">
+            <h2 class="section-title">
+              <span class="section-step">3</span>
+              <span>오늘의 음식 이야기</span>
+            </h2>
+          </div>
+
+          <div class="form-group">
+            <label for="food-story-input" class="form-label">
+              <span>학생들에게 들려줄 유래, 역사 및 식생활 이야기</span>
+            </label>
+            <textarea
+              id="food-story-input"
+              class="form-control"
+              rows="4"
+              placeholder="음식의 유래나 맛있게 먹는 법, 조상들의 지혜를 아이들의 눈높이에 맞추어 작성해주세요."
+            ></textarea>
+          </div>
+        </div>
+
+        <!-- 4단계: 영양 정보 (검증된 자료 입력) -->
+        <div class="panel-section">
+          <div class="section-header">
+            <h2 class="section-title">
+              <span class="section-step">4</span>
+              <span>검증된 영양 정보</span>
+            </h2>
+            <button type="button" id="btn-add-nutrient" class="btn btn-secondary btn-sm">
+              ➕ 영양소 추가
+            </button>
+          </div>
+          <p style="font-size: 0.8rem; color: var(--color-text-soft);">
+            * 임의의 가짜 수치를 생성하지 않으며, 입력되지 않은 경우 '영양 정보 확인 필요' 상태로 표시됩니다.
+          </p>
+
+          <div id="nutrient-items-container" class="nutrient-list">
+            <!-- 자바스크립트로 동적 렌더링 -->
+          </div>
+        </div>
+
+        <!-- 5단계: 신나는 영양 퀴즈 -->
+        <div class="panel-section">
+          <div class="section-header">
+            <h2 class="section-title">
+              <span class="section-step">5</span>
+              <span>신나는 영양 퀴즈 (3지선다)</span>
+            </h2>
+          </div>
+
+          <div class="form-group">
+            <label for="quiz-question-input" class="form-label">
+              <span>퀴즈 문제</span>
+            </label>
+            <input
+              type="text"
+              id="quiz-question-input"
+              class="form-control"
+              placeholder="예: 미역국에 풍부하여 뼈를 튼튼하게 해주는 영양소는 무엇일까요?"
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">
+              <span>보기 3개 입력 (동그라미 라디오를 눌러 정답을 지정하세요)</span>
+              <span class="req">*</span>
+            </label>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+              <div class="quiz-option-row">
+                <input type="radio" name="quiz-correct-answer" id="quiz-radio-0" class="quiz-radio" checked title="1번을 정답으로 지정" />
+                <input type="text" id="quiz-opt-0" class="form-control" placeholder="보기 1 (예: 칼슘)" />
+              </div>
+              <div class="quiz-option-row">
+                <input type="radio" name="quiz-correct-answer" id="quiz-radio-1" class="quiz-radio" title="2번을 정답으로 지정" />
+                <input type="text" id="quiz-opt-1" class="form-control" placeholder="보기 2 (예: 설탕)" />
+              </div>
+              <div class="quiz-option-row">
+                <input type="radio" name="quiz-correct-answer" id="quiz-radio-2" class="quiz-radio" title="3번을 정답으로 지정" />
+                <input type="text" id="quiz-opt-2" class="form-control" placeholder="보기 3 (예: 버터)" />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="quiz-explanation-input" class="form-label">
+              <span>정답 해설 및 식생활 지도 도움말</span>
+            </label>
+            <textarea
+              id="quiz-explanation-input"
+              class="form-control"
+              rows="2"
+              placeholder="학생이 정답을 맞히거나 선택했을 때 보여줄 친절한 설명글을 입력하세요."
+            ></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           [우측] 학생용 교육자료 실시간 미리보기 & 액션바
+           =================================================================== -->
+      <section class="preview-panel" aria-label="교육자료 미리보기 패널">
+        <!-- 상단 툴바 액션 버튼 -->
+        <div class="preview-toolbar">
+          <div class="preview-toolbar-left">
+            <span>📺</span>
+            <span>학생용 교육자료 실시간 미리보기</span>
+          </div>
+          <div class="preview-toolbar-actions">
+            <button type="button" id="btn-tv-fullscreen" class="btn btn-primary btn-sm" title="급식실 대형 모니터/TV 전체화면으로 송출합니다">
+              📺 TV 전체화면
+            </button>
+            <button type="button" id="btn-save-image" class="btn btn-secondary btn-sm" title="고화질 PNG 이미지로 저장합니다">
+              🖼️ PNG 저장
+            </button>
+            <button type="button" id="btn-print" class="btn btn-secondary btn-sm" title="A4 인쇄 전용 레이아웃으로 출력합니다">
+              🖨️ 인쇄하기
+            </button>
+          </div>
+        </div>
+
+        <!-- 실제 인쇄 및 화면에 보여질 완성형 카드 -->
+        <article id="preview-card" class="preview-card grade-middle">
+          <!-- 카드 상단 바 -->
+          <div class="card-header-bar">
+            <div class="card-title-group">
+              <div class="card-school-badge">
+                <span>🏫</span>
+                <span>행복한 초등학교 급식 식생활 이야기</span>
+              </div>
+              <h2 id="preview-date-text" class="card-main-heading">급식 이야기</h2>
+            </div>
+            <div id="preview-grade-badge" class="card-grade-badge">초등 중학년 (3~4학년)</div>
+          </div>
+
+          <!-- 전체 급식 메뉴 바 -->
+          <div id="preview-menu-bar" class="card-menu-bar">
+            <span class="card-menu-label">오늘의 식단 :</span>
+            <div id="preview-menu-list" class="card-menu-list"></div>
+          </div>
+
+          <!-- 오늘의 영양 주인공 음식 하이라이트 -->
+          <div class="hero-food-banner">
+            <div class="hero-food-text">
+              <span class="hero-food-sub">TODAY'S SPECIAL MENU</span>
+              <h3 id="preview-hero-title" class="hero-food-name">오늘의 대표 음식</h3>
+            </div>
+            <div id="preview-hero-icon" class="hero-food-icon" aria-hidden="true">🍽️</div>
+          </div>
+
+          <!-- 섹션 1: 오늘의 음식 이야기 -->
+          <div class="preview-content-section">
+            <h4 class="content-section-title">
+              <span>📖</span>
+              <span>오늘의 음식 이야기</span>
+            </h4>
+            <p id="preview-story-text" class="content-body-text"></p>
+          </div>
+
+          <!-- 섹션 2: 우리 몸을 튼튼하게 하는 영양 정보 -->
+          <div class="preview-content-section">
+            <h4 class="content-section-title">
+              <span>🥦</span>
+              <span>우리 몸을 튼튼하게 하는 영양소</span>
+            </h4>
+            <div id="preview-nutrient-grid" class="preview-nutrient-grid"></div>
+          </div>
+
+          <!-- 섹션 3: 신나는 오늘의 영양 퀴즈 (인터랙티브 체험) -->
+          <div id="preview-quiz-box" class="preview-quiz-box">
+            <h4 class="content-section-title" style="color: #0369a1;">
+              <span>❓</span>
+              <span>오늘의 신나는 영양 퀴즈!</span>
+            </h4>
+            <div id="preview-quiz-question" class="quiz-question-text"></div>
+            <div id="preview-quiz-options" class="quiz-interactive-options"></div>
+
+            <!-- 해설 박스 (문제 클릭 시 펼쳐짐) -->
+            <div id="preview-quiz-explanation" class="quiz-explanation-box">
+              <div class="quiz-explanation-title">
+                <span>💡</span>
+                <span>알아두면 유익한 영양 상식</span>
+              </div>
+              <div id="preview-quiz-exp-text" class="quiz-explanation-text"></div>
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <!-- ===================================================================
+         모달 1: 급식실 TV 전체화면 송출 모달
+         =================================================================== -->
+    <div id="tv-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="급식실 TV 전체화면 모드">
+      <div class="tv-modal-container">
+        <div class="tv-modal-header">
+          <div class="tv-header-title">
+            <span>📺</span>
+            <span>급식실 TV 송출 모드 (16:9 대형 디스플레이)</span>
+          </div>
+          <button type="button" id="btn-close-tv-modal" class="btn btn-secondary btn-sm" title="전체화면 종료 (ESC)">
+            ✕ 닫기 (ESC)
+          </button>
+        </div>
+        <div id="tv-modal-card-host" class="tv-modal-content">
+          <!-- 자바스크립트로 preview-card가 복제되어 대형 화면으로 표시됨 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================================================================
+         모달 2: 10대 추천 대표 급식 메뉴 선택 모달
+         =================================================================== -->
+    <div id="preset-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="10대 추천 메뉴 선택">
+      <div class="preset-modal-container">
+        <div class="preset-modal-header">
+          <h3>🍱 초등 10대 추천 급식 메뉴</h3>
+          <button type="button" id="btn-close-preset-modal" class="btn btn-secondary btn-sm">
+            ✕ 닫기
+          </button>
+        </div>
+        <div id="preset-list-container" class="preset-modal-body">
+          <!-- 자바스크립트로 10종 메뉴 카드 렌더링 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 플로팅 토스트 알림 컨테이너 -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- 순수 JavaScript 엔진 로드 (상대 경로 ./app.js) -->
+    <script src="./app.js"></script>
+  </body>
+</html>
