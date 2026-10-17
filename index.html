@@ -27,6 +27,9 @@
           <span>⚠️</span>
           <span>새로고침 시 내용이 초기화됩니다 (JSON 백업 권장)</span>
         </div>
+        <button type="button" id="btn-open-stanbyme" class="btn btn-stanbyme btn-sm" title="LG 스탠바이미 터치 키오스크 화면으로 즉시 전환합니다">
+          📱 스탠바이미 적용
+        </button>
         <button type="button" id="btn-import-json" class="btn btn-secondary btn-sm" title="저장된 JSON 백업 파일을 불러옵니다">
           📥 JSON 불러오기
         </button>
@@ -75,6 +78,17 @@
                 <button type="button" class="grade-btn" data-grade="upper">고학년 (5-6)</button>
               </div>
             </div>
+          </div>
+
+          <!-- 구미봉곡초등학교 나이스(NEIS) 실시간 급식 자동 연동 배너 -->
+          <div class="school-sync-banner">
+            <div class="school-sync-info">
+              <span class="school-badge-tag">🏫 구미봉곡초등학교 급식 연동</span>
+              <span id="school-sync-status" class="sync-status-text">교육부 나이스(NEIS) 실시간 급식 연동 중</span>
+            </div>
+            <button type="button" id="btn-fetch-neis" class="btn btn-mint-light btn-sm" title="선택한 날짜의 구미봉곡초등학교 급식을 나이스에서 즉시 불러옵니다">
+              🔄 급식 다시 불러오기
+            </button>
           </div>
         </div>
 
@@ -223,6 +237,9 @@
             <span>학생용 교육자료 실시간 미리보기</span>
           </div>
           <div class="preview-toolbar-actions">
+            <button type="button" id="btn-stanbyme-toolbar" class="btn btn-stanbyme btn-sm" title="학생들이 직접 터치하며 탐색하는 스탠바이미 키오스크 화면으로 전환">
+              📱 스탠바이미 터치 모드
+            </button>
             <button type="button" id="btn-tv-fullscreen" class="btn btn-primary btn-sm" title="급식실 대형 모니터/TV 전체화면으로 송출합니다">
               📺 TV 전체화면
             </button>
@@ -242,11 +259,17 @@
             <div class="card-title-group">
               <div class="card-school-badge">
                 <span>🏫</span>
-                <span>행복한 초등학교 급식 식생활 이야기</span>
+                <span>구미봉곡초등학교 오늘의 급식 식생활 이야기</span>
               </div>
               <h2 id="preview-date-text" class="card-main-heading">급식 이야기</h2>
             </div>
-            <div id="preview-grade-badge" class="card-grade-badge">초등 중학년 (3~4학년)</div>
+            <div class="card-meta-badges">
+              <div id="preview-grade-badge" class="card-grade-badge">초등 중학년 (3~4학년)</div>
+              <div id="preview-calorie-badge" class="calorie-badge" style="display: none;">
+                <span>🔥</span>
+                <span id="preview-calorie-text">529.7 Kcal</span>
+              </div>
+            </div>
           </div>
 
           <!-- 전체 급식 메뉴 바 -->
@@ -343,6 +366,110 @@
 
     <!-- 플로팅 토스트 알림 컨테이너 -->
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- ===================================================================
+         스탠바이미(StanbyME) 전용 학생 터치 키오스크 뷰
+         =================================================================== -->
+    <div id="stanbyme-kiosk-view" class="stanbyme-kiosk-view" role="dialog" aria-modal="true" aria-label="스탠바이미 학생 터치 탐험 화면">
+      <!-- 상단 바 -->
+      <header class="stanbyme-header">
+        <div class="stanbyme-header-left">
+          <div class="stanbyme-school-tag">
+            <span>🏫</span>
+            <span>구미봉곡초 오늘의 식생활 탐험대</span>
+          </div>
+          <div id="stanbyme-date-badge" class="stanbyme-date-badge">2026년 10월 16일</div>
+        </div>
+
+        <div class="stanbyme-header-right">
+          <!-- 모은 별 카운터 -->
+          <div class="stanbyme-star-counter" title="퀴즈를 맞히고 모은 별">
+            <span>⭐</span>
+            <span>별 <b id="stanbyme-star-count">0</b>개</span>
+          </div>
+
+          <!-- 학년 선택 탭 -->
+          <div class="stanbyme-grade-tabs" role="tablist">
+            <button type="button" class="stanbyme-grade-tab" data-grade="lower">저학년 (1-2)</button>
+            <button type="button" class="stanbyme-grade-tab active" data-grade="middle">중학년 (3-4)</button>
+            <button type="button" class="stanbyme-grade-tab" data-grade="upper">고학년 (5-6)</button>
+          </div>
+
+          <!-- 관리자/선생님 화면으로 복귀 -->
+          <button type="button" id="btn-close-stanbyme" class="btn-exit-kiosk" title="교사용 편집 화면으로 돌아갑니다">
+            ✕ 편집 화면으로
+          </button>
+        </div>
+      </header>
+
+      <!-- 가로 터치 식단 리본 -->
+      <nav class="stanbyme-dish-ribbon" aria-label="오늘의 급식 메뉴 선택">
+        <div class="stanbyme-ribbon-title">
+          <h3>
+            <span>🍽️</span>
+            <span>궁금한 음식을 터치해 보세요!</span>
+          </h3>
+          <span class="stanbyme-touch-hint">👉 터치하면 이야기와 퀴즈가 나와요!</span>
+        </div>
+        <div id="stanbyme-dish-list" class="stanbyme-dish-list">
+          <!-- 자바스크립트로 오늘의 메뉴 버튼들이 대형 카드로 렌더링됨 -->
+        </div>
+      </nav>
+
+      <!-- 메인 인터랙티브 스테이지 -->
+      <main class="stanbyme-stage">
+        <!-- 좌측: 대형 음식 탐구 카드 -->
+        <article class="stanbyme-food-card">
+          <div class="stanbyme-food-header">
+            <div id="stanbyme-hero-icon" class="stanbyme-big-icon">🦀</div>
+            <div class="stanbyme-food-titles">
+              <span class="stanbyme-food-sub">TODAY'S SPECIAL DISH</span>
+              <h2 id="stanbyme-hero-title" class="stanbyme-food-title">국산꽃게탕</h2>
+            </div>
+          </div>
+
+          <div class="stanbyme-story-box">
+            <h4>
+              <span>📖</span>
+              <span>이 음식의 비밀 이야기</span>
+            </h4>
+            <p id="stanbyme-story-text" class="stanbyme-story-text"></p>
+          </div>
+        </article>
+
+        <!-- 우측: 영양소 & 대형 인터랙티브 퀴즈 -->
+        <aside class="stanbyme-interactive-col">
+          <section class="stanbyme-nutrient-panel">
+            <h4>
+              <span>🌱</span>
+              <span id="stanbyme-nut-title">우리 몸을 튼튼하게 하는 영양소</span>
+            </h4>
+            <div id="stanbyme-nutrient-grid" class="stanbyme-nutrient-grid"></div>
+          </section>
+
+          <section class="stanbyme-quiz-panel">
+            <div class="stanbyme-quiz-header">
+              <h4>
+                <span>❓</span>
+                <span>신나는 터치 퀴즈 챌린지</span>
+              </h4>
+              <span id="stanbyme-quiz-badge" style="font-size:0.95rem; font-weight:700; color:#0284c7;">문제를 터치해보세요!</span>
+            </div>
+
+            <div id="stanbyme-quiz-question" class="stanbyme-quiz-question"></div>
+            <div id="stanbyme-quiz-options" class="stanbyme-quiz-options"></div>
+
+            <div id="stanbyme-quiz-feedback" class="stanbyme-feedback-box">
+              <div class="stanbyme-feedback-title">
+                <span id="stanbyme-fb-icon">👏</span>
+                <span id="stanbyme-fb-title">정답입니다! 참 잘했어요!</span>
+              </div>
+              <div id="stanbyme-fb-text" class="stanbyme-feedback-text"></div>
+            </div>
+          </section>
+        </aside>
+      </main>
+    </div>
 
     <!-- 순수 JavaScript 엔진 로드 (상대 경로 ./app.js) -->
     <script src="./app.js"></script>

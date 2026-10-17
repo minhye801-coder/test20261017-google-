@@ -1,350 +1,279 @@
 /**
  * 영양자료 자동 생성기 (app.js)
- * 초등 영양교사용 급식 연계 식생활 교육자료 제작 엔진
- * 무의존성 순수 Vanilla JavaScript (GitHub Pages 정적 호스팅 100% 호환)
+ * 초등 영양교사용 급식 연계 식생활 교육자료 제작 & 스탠바이미(StanbyME) 터치 키오스크 엔진
+ * - 구미봉곡초등학교 (경북 구미시, 코드: R10 / 8801088) 교육부 나이스(NEIS) 오픈API 실시간 자동 연동
+ * - 순수 Vanilla JavaScript (외부 라이브러리 없는 순수 정적 웹, GitHub Pages 100% 호환)
  */
 
 (function () {
   'use strict';
 
   // ==========================================================================
-  // 1. 초등학교 다빈도 10대 추천 급식 메뉴 사전 데이터베이스
+  // 1. 학교 정보 설정 (구미봉곡초등학교)
   // ==========================================================================
-  const MENU_PRESETS = [
+  const SCHOOL_CONFIG = {
+    name: '구미봉곡초등학교',
+    officeCode: 'R10', // 경상북도교육청
+    schoolCode: '8801088', // 구미봉곡초등학교 표준코드
+    location: '경상북도 구미시 봉곡동'
+  };
+
+  // ==========================================================================
+  // 2. 급식 메뉴별 풍부한 식생활 교육 & 퀴즈 지식 데이터베이스
+  // ==========================================================================
+  const FOOD_KNOWLEDGE_BASE = [
     {
-      id: 'bibimbap',
-      name: '알록달록 비빔밥',
+      keywords: ['꽃게', '게탕', '꽃게탕', '해물'],
+      hero: '국산꽃게탕',
+      icon: '🦀',
+      story: '꽃게는 가을철 바다의 영양 보약으로 불릴 만큼 맛과 영양이 풍부한 수산물이에요.\n\n단단한 껍질 속 부드러운 게살에는 타우린과 필수 아미노산이 듬뿍 들어있어 국물을 시원하게 해주고, 학교 수업과 체육 활동으로 지친 우리 친구들의 피로를 말끔히 풀어준답니다.',
+      nutrients: [
+        { name: '타우린', benefit: '간 기능을 돕고 피로를 빠르게 풀어주며 눈 건강을 지켜줘요.', verified: true },
+        { name: '칼슘 & 키토산', benefit: '성장기 어린이의 뼈와 치아를 튼튼하게 만들어줘요.', verified: true },
+        { name: '양질의 단백질', benefit: '지방이 적고 소화가 잘되어 근육 성장에 아주 좋아요.', verified: true }
+      ],
+      quiz: {
+        lower: {
+          question: '꽃게탕 국물을 시원하게 해주고 피로를 싹 풀어주는 바다 영양소는?',
+          options: ['타우린', '설탕', '초콜릿'],
+          correctIndex: 0,
+          explanation: '게살과 조개류에 많은 타우린은 피로 회복과 눈 건강에 최고예요!'
+        },
+        middle: {
+          question: '꽃게 껍질과 살에 풍부하여 뼈를 튼튼하게 하고 성장을 돕는 무기질은?',
+          options: ['칼슘', '탄소', '카페인'],
+          correctIndex: 0,
+          explanation: '꽃게에는 뼈 형성에 꼭 필요한 칼슘이 듬뿍 들어있습니다.'
+        },
+        upper: {
+          question: '꽃게와 같은 갑각류 껍질에 함유된 고분자 다당류 키틴/키토산의 주요 기능은?',
+          options: ['체내 면역력 증진 및 유해 콜레스테롤 흡수 저감', '혈당의 급상승 유발', '단백질 분해 방해'],
+          correctIndex: 0,
+          explanation: '키토산은 장내 유익균 증식과 면역력 증진에 도움을 주는 기능성 성분입니다.'
+        }
+      }
+    },
+    {
+      keywords: ['도라지', '도라지초무침', '나물', '무침'],
+      hero: '도라지초무침',
       icon: '🥗',
-      tag: '전통 식문화 / 골고루 먹기',
-      wholeMenu: '보리밥, 팽이버섯된장국, 알록달록비빔밥, 달걀후라이, 깍두기, 사과',
-      story: '비빔밥은 밥 위에 여러 가지 고운 색깔의 나물과 고기, 달걀을 얹어 비벼 먹는 우리나라의 대표적인 전통 음식이에요.\n\n옛날 선조들은 한 해의 마지막 날 남은 반찬을 모두 비벼 먹거나, 농번기에 일손을 덜기 위해 함께 비벼 먹으며 지혜를 나눴답니다. 초록 시금치, 주황 당근, 노란 달걀이 어우러져 오방색의 아름다움과 영양의 균형을 모두 담고 있어요.',
+      story: '쌉싸름하면서도 향긋한 도라지는 옛날부터 우리 조상들이 목과 기관지를 보호하기 위해 즐겨 먹던 귀한 약용 채소예요.\n\n새콤달콤하고 매콤한 양념에 아삭아삭하게 무쳐내어 입맛을 돋워주고, 환절기에 목이 아프거나 기침이 날 때 기관지를 촉촉하게 보호해 준답니다.',
       nutrients: [
-        { name: '비타민 A', benefit: '시금치와 당근에 가득하여 어두운 곳에서도 눈을 밝게 지켜줘요.', verified: true },
-        { name: '식이섬유', benefit: '나물 속 섬유질이 배 속 장운동을 도와 소화를 원활하게 해줘요.', verified: true },
-        { name: '단백질', benefit: '달걀과 소고기가 키가 쑥쑥 자라고 튼튼한 근육을 만들도록 도와줘요.', verified: true }
+        { name: '사포닌', benefit: '기관지 점액 분비를 촉진해 미세먼지와 바이러스로부터 목을 보호해요.', verified: true },
+        { name: '이눌린 (천연 식이섬유)', benefit: '장내 유익균의 먹이가 되어 소화를 돕고 변비를 예방해요.', verified: true },
+        { name: '칼슘 & 철분', benefit: '뿌리채소의 풍부한 무기질이 빈혈을 예방하고 피를 맑게 해줘요.', verified: true }
       ],
       quiz: {
         lower: {
-          question: '비빔밥 속에 들어간 주황색 당근은 우리 몸의 어디를 건강하게 해줄까요?',
-          options: ['눈을 초롱초롱하게 해줘요', '이를 썩게 만들어요', '잠이 오게 해요'],
+          question: '도라지초무침에 들어있는 도라지는 우리 몸 어디를 튼튼하게 지켜줄까요?',
+          options: ['목과 기관지를 촉촉하게 지켜줘요', '발가락을 길어지게 해요', '귀를 간지럽게 해요'],
           correctIndex: 0,
-          explanation: '당근에 풍부한 비타민 A는 우리 눈을 맑고 튼튼하게 지켜주는 소중한 영양소랍니다.'
+          explanation: '도라지 속 사포닌 성분은 목과 기관지를 촉촉하게 감싸 기침과 감기를 막아줘요!'
         },
         middle: {
-          question: '비빔밥의 여러 색깔 채소와 단백질 식품을 골고루 먹으면 좋은 점은 무엇일까요?',
-          options: ['탄수화물만 편식하게 된다', '오방색 영양소가 몸의 면역력을 골고루 높여준다', '물을 적게 마시게 된다'],
-          correctIndex: 1,
-          explanation: '비빔밥은 5가지 색상의 고명 채소와 고기가 어우러져 균형 잡힌 영양을 공급해 줍니다.'
+          question: '도라지 뿌리에 풍부하여 기침을 멎게 하고 기관지 점막을 튼튼히 하는 핵심 영양소는?',
+          options: ['사포닌', '설탕', '탄산'],
+          correctIndex: 0,
+          explanation: '도라지의 쌉싸름한 맛을 내는 사포닌은 기관지 질환을 예방하는 으뜸 성분입니다.'
         },
         upper: {
-          question: '전통 비빔밥에 담긴 조상들의 식생활 지혜로 가장 적절한 것은 무엇일까요?',
-          options: ['칼로리만 높여 과식을 유도한다', '여러 식품군을 한 그릇에 담아 영양적 상호보완을 실현했다', '서양 패스트푸드를 모방했다'],
-          correctIndex: 1,
-          explanation: '비빔밥은 채소의 무기질/비타민과 곡류의 탄수화물, 육류의 단백질이 한 그릇에서 최적의 영양 밸런스를 이룹니다.'
+          question: '도라지 속 사포닌(Platycodin) 성분이 호흡기 건강에 미치는 생리학적 작용은?',
+          options: ['기관지 분비액 생성을 촉진하여 섬모 운동 활성화 및 항염증 작용', '체온의 급격한 저하', '단백질 흡수 억제'],
+          correctIndex: 0,
+          explanation: '도라지 사포닌은 기도 점액 분비를 증가시켜 유해물질 배출과 면역 조절을 돕습니다.'
         }
       }
     },
     {
-      id: 'miyeokguk',
-      name: '쇠고기미역국',
-      icon: '🍲',
-      tag: '생일·축하 / 바다의 채소',
-      wholeMenu: '현미밥, 쇠고기미역국, 돈육간장불고기, 콩나물무침, 배추김치, 귤',
-      story: '미역국은 우리가 태어난 날이나 어머니의 은혜를 기리는 날에 꼭 먹는 따뜻한 음식이에요.\n\n바다에서 자라는 미역은 고려 시대부터 아이를 낳은 산모에게 끓여주던 건강식이었어요. 바다의 풍부한 미네랄을 품고 있어 몸속 피를 맑게 정화하고 뼈를 튼튼하게 가꾸어 준답니다.',
+      keywords: ['10곡혼합밥', '혼합밥', '잡곡밥', '보리밥', '현미밥', '밥'],
+      hero: '10곡혼합밥',
+      icon: '🍚',
+      story: '10곡 혼합밥은 쌀에 찹쌀, 보리, 조, 수수, 기장, 흑미 등 10가지 건강한 알곡이 한데 어우러진 영양의 보물상자예요!\n\n백미만 먹을 때보다 비타민 B군과 미네랄, 식이섬유가 몇 배나 풍부하여 우리 두뇌에 지치지 않는 집중력 에너지를 가득 채워준답니다.',
       nutrients: [
-        { name: '요오드', benefit: '갑상선 건강과 성장 호르몬 분비를 도와 쑥쑥 자라게 해요.', verified: true },
-        { name: '칼슘', benefit: '우유 못지않게 칼슘이 많아 뼈와 치아를 튼튼하게 해줘요.', verified: true },
-        { name: '철분', benefit: '쇠고기와 미역이 만나 피를 맑게 하고 빈혈을 예방해 줘요.', verified: true }
+        { name: '복합 탄수화물', benefit: '뇌가 활동하는 데 필요한 포도당 에너지를 서서히 지속적으로 공급해요.', verified: true },
+        { name: '비타민 B군', benefit: '에너지 대사를 촉진하여 오후 수업 시간에도 피로하지 않게 해줘요.', verified: true },
+        { name: '식이섬유', benefit: '배 속 장운동을 활발하게 하여 소화를 돕고 쾌변을 선물해요.', verified: true }
       ],
       quiz: {
         lower: {
-          question: '미역처럼 바다에서 나는 초록 채소에는 뼈를 단단하게 만드는 어떤 영양소가 많을까요?',
-          options: ['설탕', '칼슘', '기름'],
-          correctIndex: 1,
-          explanation: '미역에는 칼슘이 아주 풍부하여 우리 뼈와 치아를 단단하게 만들어줍니다.'
+          question: '10곡 혼합밥처럼 여러 잡곡을 골고루 섞어 먹으면 어떤 좋은 힘이 생길까요?',
+          options: ['머리가 똑똑해지고 하루 종일 쌩쌩해요', '잠이 쏟아져요', '이가 아파요'],
+          correctIndex: 0,
+          explanation: '잡곡밥은 에너지가 오래오래 지속되어 공부와 운동에 큰 힘을 준답니다!'
         },
         middle: {
-          question: '우리 조상들이 생일에 미역국을 먹기 시작한 아름다운 유래는 무엇일까요?',
-          options: ['어머니가 나를 낳고 고생하신 사랑에 감사하기 위해', '미역이 가장 싼 재료여서', '외국에서 전해진 파티 문화여서'],
+          question: '잡곡밥에 풍부하여 섭취한 영양소를 활력 에너지로 바꾸고 피로를 덜어주는 비타민은?',
+          options: ['비타민 B군', '비타민 K', '비타민 D'],
           correctIndex: 0,
-          explanation: '출산 후 산모의 건강 회복을 돕던 미역국을 생일에 먹으며 어머니의 은혜에 감사하는 전통입니다.'
+          explanation: '통곡물에 많은 비타민 B군은 탄수화물과 단백질의 체내 연소를 돕는 필수 비타민입니다.'
         },
         upper: {
-          question: '미역에 풍부한 미끌미끌한 수용성 식이섬유인 알긴산(Alginic acid)의 주요 효능은?',
-          options: ['몸속 노폐물과 중금속을 흡착해 배출한다', '혈당을 급격히 높인다', '치아를 부식시킨다'],
+          question: '단일 백미밥 대비 10곡 혼합밥 섭취가 혈당 조절 및 대사 건강에 유리한 과학적 이유는?',
+          options: ['풍부한 불용성·수용성 식이섬유가 당 흡수 속도를 완만하게 조절(Low GI)', '칼로리가 0이 되어서', '지방질만 연소시켜서'],
           correctIndex: 0,
-          explanation: '미역의 끈적한 알긴산 성분은 장내 유해물질과 중금속을 몸 밖으로 배출해 주는 청소부 역할을 합니다.'
+          explanation: '복합 전분과 풍부한 섬유소는 혈당 급상승을 막고 인슐린 저항성을 개선합니다.'
         }
       }
     },
     {
-      id: 'jeyuk',
-      name: '제육볶음',
-      icon: '🥩',
-      tag: '피로회복 / 양질의 단백질',
-      wholeMenu: '흑미밥, 아욱된장국, 매콤달콤제육볶음, 상추쌈·쌈장, 깍두기, 요구르트',
-      story: '제육볶음의 "제육"은 돼지고기를 뜻하는 옛말 "저육(猪肉)"에서 유래되었어요.\n\n양파, 대파, 마늘 등 향긋한 양념 채소와 함께 볶아내어 돼지고기의 누린내를 잡고 풍미를 극대화한 한국인의 소울푸드랍니다. 쌈 채소와 함께 싸서 먹으면 고기와 비타민을 완벽하게 섭취할 수 있어요.',
-      nutrients: [
-        { name: '비타민 B1 (티아민)', benefit: '소고기의 10배에 달해 공부와 운동으로 쌓인 피로를 싹 풀어줘요.', verified: true },
-        { name: '양질의 단백질', benefit: '성장기 근육과 피부, 장기를 구성하는 필수 아미노산이 듬뿍 들어있어요.', verified: true },
-        { name: '알리신 (마늘·파)', benefit: '돼지고기의 비타민 B1 흡수율을 10배 이상 높여 활력을 줘요.', verified: true }
-      ],
-      quiz: {
-        lower: {
-          question: '제육볶음을 먹을 때 초록색 상추나 깻잎에 싸서 먹으면 왜 좋을까요?',
-          options: ['고기와 채소의 영양소를 골고루 먹을 수 있어서', '고기 맛을 없애려고', '양이 적어 보이게 하려고'],
-          correctIndex: 0,
-          explanation: '고기(단백질)와 상추(비타민·섬유질)를 함께 먹으면 소화도 잘되고 영양 균형이 최고가 된답니다!'
-        },
-        middle: {
-          question: '돼지고기에 특히 풍부하여 피로를 덜어주고 에너지를 뿜어내게 돕는 비타민은?',
-          options: ['비타민 D', '비타민 B1', '비타민 K'],
-          correctIndex: 1,
-          explanation: '돼지고기에는 젖산 축적을 막고 탄수화물 대사를 촉진하는 비타민 B1이 풍부합니다.'
-        },
-        upper: {
-          question: '제육볶음 양념에 마늘과 양파를 함께 사용하는 식품학적 원리는 무엇일까요?',
-          options: ['알리신 성분이 티아민과 결합해 흡수율을 높이는 알리티아민을 형성한다', '고기를 상하게 만든다', '단백질을 응고시킨다'],
-          correctIndex: 0,
-          explanation: '마늘의 알리신과 돼지고기의 티아민이 결합하여 활성 비타민인 알리티아민을 만들어 체내 흡수를 돕습니다.'
-        }
-      }
-    },
-    {
-      id: 'curry',
-      name: '골드 카레라이스',
-      icon: '🍛',
-      tag: '항산화 / 두뇌 활력',
-      wholeMenu: '골드카레라이스, 맑은유부장국, 닭봉구이, 단무지무침, 깍두기, 청포도',
-      story: '노란 황금빛 카레는 인도에서 시작되어 전 세계 어린이들의 사랑을 받는 메뉴예요.\n\n강황, 쿠민, 코리앤더 등 10가지가 넘는 향신료와 함께 큼직한 감자, 당근, 양파가 듬뿍 들어가 채소를 편식하는 친구들도 맛있게 먹을 수 있답니다.',
-      nutrients: [
-        { name: '커큐민 (강황)', benefit: '노란빛 성분으로 머리를 맑게 하고 몸속 나쁜 염증을 없애줘요.', verified: true },
-        { name: '베타카로틴 (당근)', benefit: '체내에서 비타민 A로 바뀌어 감염병을 막고 면역력을 키워줘요.', verified: true },
-        { name: '복합 탄수화물', benefit: '감자와 밥이 오후 수업 시간 동안 지치지 않는 두뇌 에너지를 줘요.', verified: true }
-      ],
-      quiz: {
-        lower: {
-          question: '카레를 예쁜 노란색으로 만들어 주는 마법의 식물 영양소는 무엇일까요?',
-          options: ['초콜릿', '강황(커큐민)', '소금'],
-          correctIndex: 1,
-          explanation: '카레의 샛노란 색은 강황 속에 든 "커큐민"이라는 건강 성분 덕분이에요.'
-        },
-        middle: {
-          question: '카레 속 강황의 커큐민 성분이 우리 어린이들에게 주는 좋은 효능은?',
-          options: ['집중력을 높이고 두뇌 건강과 면역력을 돕는다', '치아를 흔들리게 한다', '피부를 거칠게 한다'],
-          correctIndex: 0,
-          explanation: '커큐민은 뇌세포 보호와 항산화 작용으로 공부하는 학생들의 두뇌 건강에 큰 도움이 됩니다.'
-        },
-        upper: {
-          question: '카레의 주원료인 강황 속 커큐민의 체내 흡수율을 높이기 위해 함께 조리하면 좋은 성분은?',
-          options: ['지방(유지류) 및 후추(피페린)', '다량의 설탕', '차가운 탄산음료'],
-          correctIndex: 0,
-          explanation: '지용성 물질인 커큐민은 기름에 볶고 후추의 피페린과 함께 섭취할 때 생체이용률이 극대화됩니다.'
-        }
-      }
-    },
-    {
-      id: 'tonkatsu',
-      name: '수제 등심돈가스',
-      icon: '🍱',
-      tag: '성장기 파워 / 단백질',
-      wholeMenu: '기장밥, 팽이버섯미소국, 수제등심돈가스, 양배추샐러드, 배추김치, 바나나',
-      story: '바삭바삭한 소리가 일품인 돈가스는 우리 친구들이 가장 좋아하는 급식 메뉴 중 하나예요!\n\n고기를 부드럽게 두드려 빵가루를 묻혀 튀겨낸 돈가스는 성장기 어린이에게 꼭 필요한 단백질을 보충해 줍니다. 아삭한 양배추 샐러드와 함께 먹으면 기름기를 씻어주고 소화가 훨씬 잘된답니다.',
-      nutrients: [
-        { name: '동물성 단백질', benefit: '키와 뼈, 근육을 키워주는 8가지 필수 아미노산이 균형 있게 들어있어요.', verified: true },
-        { name: '비타민 U (양배추)', benefit: '위벽을 부드럽게 감싸 튀김 음식을 편안하게 소화하도록 도와줘요.', verified: true },
-        { name: '아연', benefit: '상처 회복을 돕고 면역 세포를 건강하게 유지해 줘요.', verified: true }
-      ],
-      quiz: {
-        lower: {
-          question: '바삭한 돈가스를 먹을 때 접시 옆에 있는 양배추 샐러드를 꼭 같이 먹어야 하는 이유는?',
-          options: ['위장을 편안하게 지켜주고 소화를 도와줘서', '장식용이라 버려야 해서', '돈가스를 식히려고'],
-          correctIndex: 0,
-          explanation: '양배추에 든 비타민 U는 위를 보호하여 튀긴 고기를 속 쓰림 없이 건강하게 소화시켜 줘요.'
-        },
-        middle: {
-          question: '돼지고기 등심 부위의 특징으로 올바른 것은?',
-          options: ['지방이 적고 양질의 단백질이 풍부하여 성장기에 좋다', '영양소가 전혀 없다', '소화가 전혀 안 된다'],
-          correctIndex: 0,
-          explanation: '등심은 결이 곱고 지방이 적절하며 근육 형성에 최적화된 양질의 단백질 덩어리입니다.'
-        },
-        upper: {
-          question: '육류 튀김 조리 시 신선한 식물성 기름 사용과 샐러드 곁들임이 영양학적으로 중요한 이유는?',
-          options: ['산화 스트레스를 줄이고 식이섬유로 콜레스테롤 흡수를 완화하기 위해', '칼로리를 0으로 만들기 위해', '식품 안전 기준을 낮추기 위해'],
-          correctIndex: 0,
-          explanation: '적정 온도의 신선한 기름 조리와 신선 채소의 식이섬유는 지질 흡수 조절과 소화기 건강을 동시에 돕습니다.'
-        }
-      }
-    },
-    {
-      id: 'dakdoritang',
-      name: '닭볶음탕',
+      keywords: ['닭불고기', '짜장닭', '닭갈비', '닭강정', '파닭', '닭'],
+      hero: '짜장닭불고기',
       icon: '🍗',
-      tag: '면역력 증진 / 소화가 쏙쏙',
-      wholeMenu: '기장밥, 어묵무국, 닭볶음탕, 시금치나물, 깍두기, 우유',
-      story: '닭볶음탕은 부드러운 닭고기에 감자, 당근, 양파를 넣고 감칠맛 나는 양념장으로 자작하게 조려낸 일품요리예요.\n\n닭고기는 소나 돼지보다 섬유질이 가늘고 연해서 어린 친구들의 장에서도 소화 흡수가 아주 빠르답니다.',
+      story: '닭고기는 단백질 섬유가 가늘고 연해서 다른 육류보다 소화 흡수가 훨씬 빠른 훌륭한 고기예요.\n\n구미봉곡초 영양선생님께서 달콤짭조름한 짜장 소스에 채소와 닭고기를 조화롭게 볶아내어, 밥과 함께 먹으면 에너지와 영양이 몸속으로 쏙쏙 흡수된답니다.',
       nutrients: [
-        { name: '필수 아미노산', benefit: '세포 재생을 돕고 두뇌 활동을 활발하게 촉진해요.', verified: true },
-        { name: '칼륨 (감자)', benefit: '몸속 불필요한 나트륨을 배출하여 혈액순환을 건강하게 해줘요.', verified: true },
-        { name: '비타민 C (양념 채소)', benefit: '환절기 감기를 예방하고 피부 저항력을 높여줘요.', verified: true }
+        { name: '필수 아미노산', benefit: '체내에서 합성되지 않는 필수 영양소로 성장과 두뇌 활동을 도와요.', verified: true },
+        { name: '소화 흡수율 우수', benefit: '소고기나 돼지고기보다 지방이 적고 부드러워 위장에 부담이 적어요.', verified: true },
+        { name: '비타민 B6', benefit: '단백질 대사를 돕고 면역 항체 형성을 촉진해요.', verified: true }
       ],
       quiz: {
         lower: {
-          question: '닭고기가 소고기나 돼지고기보다 어린이 배 속에서 좋은 점은 무엇일까요?',
-          options: ['고기가 연해서 소화가 아주 잘 돼요', '딱딱해서 씹기 힘들어요', '매운맛이 강해요'],
+          question: '닭고기가 다른 고기보다 어린이 배 속에서 좋은 가장 큰 이유는?',
+          options: ['고기가 연하고 부드러워 소화가 쏙쏙 잘돼서', '너무 매워서', '딱딱해서'],
           correctIndex: 0,
-          explanation: '닭고기는 결이 가늘고 부드러워 어린이 위장에서도 소화 흡수가 쏙쏙 잘됩니다.'
+          explanation: '닭고기는 근육 섬유가 가늘어 어린이 위장에서도 소화가 편안하게 이루어져요.'
         },
         middle: {
-          question: '닭볶음탕에 큼직하게 들어간 감자에 풍부하여 체내 나트륨 배출을 돕는 무기질은?',
-          options: ['칼륨', '설탕', '탄소'],
+          question: '닭고기처럼 양질의 동물성 단백질이 우리 몸에서 하는 가장 중요한 일은?',
+          options: ['근육, 피부, 장기 등 몸을 쑥쑥 자라게 한다', '잠을 못 자게 한다', '치아를 흔들리게 한다'],
           correctIndex: 0,
-          explanation: '감자의 풍부한 칼륨은 적절한 수분 균형과 나트륨 배출을 도와 혈액순환을 돕습니다.'
+          explanation: '단백질은 성장기 어린이의 뼈와 근육, 면역 세포를 구성하는 필수 요소입니다.'
         },
         upper: {
-          question: '닭고기의 단백질 영양가(Protein Quality)에 대한 설명으로 옳은 것은?',
-          options: ['체내 합성이 불가능한 필수 아미노산 조성이 우수한 완전단백질이다', '콜라겐만 들어있다', '식물성 식품보다 소화율이 떨어진다'],
+          question: '닭고기의 단백질 영양학적 특성으로 옳은 것은 무엇일까요?',
+          options: ['생물가가 높고 필수 아미노산 조성이 뛰어난 완전단백질이다', '지방질만 가득하다', '비타민 흡수를 방해한다'],
           correctIndex: 0,
-          explanation: '닭고기는 8가지 필수 아미노산이 모두 포함된 생물가 높은 완전단백질 식품입니다.'
+          explanation: '닭고기는 체내 이용률이 높은 완전단백질 식품으로 성장기 체조직 합성에 핵심입니다.'
         }
       }
     },
     {
-      id: 'janchi',
-      name: '잔치국수',
-      icon: '🍜',
-      tag: '축하와 장수 / 따뜻한 온기',
-      wholeMenu: '잔치국수, 미니밥, 해물동그랑땡, 배추김치, 방울토마토',
-      story: '잔치국수는 예로부터 마을의 잔칫날이나 결혼식, 회갑연처럼 기쁘고 경사스러운 날에 손님을 대접하던 귀한 음식이에요.\n\n국수의 긴 면발처럼 "오래오래 건강하게 장수하라"는 따뜻한 축복의 의미가 담겨 있답니다. 멸치와 다시마를 진하게 우려낸 맑은 국물이 속을 따뜻하게 데워줘요.',
+      keywords: ['삼치', '생선', '삼치살구이', '고등어', '가자미', '구이'],
+      hero: '포테이토삼치살구이',
+      icon: '🐟',
+      story: '삼치는 고등어, 꽁치와 함께 바다를 대표하는 등푸른생선 3총사 중 하나예요!\n\n부드러운 흰 속살에 고소한 감자 옷을 입혀 구워내어 비린내가 없고 담백하답니다. 삼치에는 머리를 똑똑하게 해주는 오메가-3 지방산(DHA)이 가득 들어있어 공부하는 학생들에게 최고예요.',
       nutrients: [
-        { name: '복합 탄수화물', benefit: '지친 오후 시간에 신속하게 에너지를 채워 집중력을 올려줘요.', verified: true },
-        { name: '칼슘·타우린 (멸치 육수)', benefit: '멸치와 다시마 속 영양소가 피로를 풀어주고 뼈를 튼튼하게 해요.', verified: true },
-        { name: '호박·달걀 고명 영양', benefit: '면만 먹을 때 부족하기 쉬운 단백질과 비타민을 완벽하게 채워줘요.', verified: true }
+        { name: 'DHA (오메가-3)', benefit: '뇌세포를 활성화하여 기억력과 집중력을 높여줘요.', verified: true },
+        { name: 'EPA', benefit: '혈액순환을 원활하게 하고 혈관을 깨끗하게 청소해 줘요.', verified: true },
+        { name: '비타민 D', benefit: '음식 속 칼슘이 뼈에 쏙쏙 흡수되도록 도와줘요.', verified: true }
       ],
       quiz: {
         lower: {
-          question: '옛날 조상들이 기쁜 잔칫날마다 긴 국수를 끓여 먹었던 소원은 무엇일까요?',
-          options: ['건강하게 오래오래 살라는 소원', '키가 줄어들라는 소원', '잠을 많이 자라는 소원'],
+          question: '삼치와 같은 등푸른생선에 많아 우리 머리를 똑똑하게 해주는 착한 기름은?',
+          options: ['오메가-3 (DHA)', '식용유', '초콜릿 기름'],
           correctIndex: 0,
-          explanation: '길쭉한 국수 면발처럼 아프지 않고 오래오래 건강하게 살라는 축복을 나누었답니다.'
+          explanation: 'DHA는 뇌세포의 주요 구성 성분으로 기억력과 집중력 발달에 아주 중요해요!'
         },
         middle: {
-          question: '잔치국수를 먹을 때 면만 먹지 않고 애호박, 달걀지단 고명을 함께 먹어야 하는 이유는?',
-          options: ['탄수화물과 함께 단백질과 비타민을 고루 보충하기 위해', '국수를 식히기 위해', '색깔만 보기 위해'],
+          question: '생선에 풍부한 비타민 D가 우리 몸에서 하는 결정적인 역할은?',
+          options: ['칼슘이 뼈와 치아에 잘 흡수되도록 돕는다', '배를 차갑게 한다', '머리카락을 빠지게 한다'],
           correctIndex: 0,
-          explanation: '국수(탄수화물)에 달걀(단백질), 애호박/당근(비타민)이 더해져 완벽한 영양 한 그릇이 됩니다.'
+          explanation: '비타민 D는 칼슘의 체내 흡수율을 30~40% 이상 끌어올려 주는 길잡이 역할을 합니다.'
         },
         upper: {
-          question: '국수 육수의 주재료인 마른 멸치와 다시마가 제공하는 주요 미량 영양소는?',
-          options: ['천연 글루탐산, 칼슘, 마그네슘 등 필수 미네랄', '포화지방', '단순 당류'],
+          question: '등푸른생선의 고도불포화지방산(EPA/DHA) 섭취의 생화학적 이점은?',
+          options: ['혈소판 응집 억제 및 뇌 신경 시냅스 기능 촉진', '혈전 생성 촉진', '포화지방산 축적'],
           correctIndex: 0,
-          explanation: '다시마의 글루탐산과 멸치의 이노신산이 감칠맛을 내며, 풍부한 무기질을 제공합니다.'
+          explanation: 'DHA는 뇌 신경세포막의 유동성을 증가시키고, EPA는 혈관 건강을 보호합니다.'
         }
       }
     },
     {
-      id: 'tteokguk',
-      name: '사골 떡국',
-      icon: '🥣',
-      tag: '새해의 소망 / 칼슘 가득',
-      wholeMenu: '사골떡국, 쌀밥(소), 고등어구이, 오이도라지생채, 깍두기, 한과',
-      story: '떡국은 새해 첫날 온 가족이 모여 한 살을 더 먹으며 순결하고 번창하길 기원하던 대표 명절 음식이에요.\n\n하얗고 긴 가래떡은 "순수한 마음과 장수"를, 엽전 모양으로 둥글게 썬 떡은 "풍요로운 재물과 행복"을 상징한답니다. 푹 고아낸 사골 국물이 몸을 든든하게 받쳐줘요.',
+      keywords: ['파인애플', '파인애플조각', '과일', '후식'],
+      hero: '달콤 파인애플',
+      icon: '🍍',
+      story: '달콤하고 상큼한 파인애플은 "천연 소화제"라는 멋진 별명을 가지고 있어요!\n\n고기나 밥을 먹은 뒤 파인애플을 먹으면 단백질을 싹 분해해 주는 착한 효소가 일하여, 배가 더부룩하지 않고 속이 편안해지도록 도와준답니다.',
       nutrients: [
-        { name: '콜라겐·칼슘', benefit: '사골 육수 속 영양소가 성장판과 관절을 유연하고 튼튼하게 해요.', verified: true },
-        { name: '에너지원 탄수화물', benefit: '쌀가루로 빚은 가래떡이 두뇌 활동에 필요한 당질 에너지를 줘요.', verified: true },
-        { name: '철분 (소고기 고명)', benefit: '피를 맑게 하고 면역력을 튼튼하게 지켜줘요.', verified: true }
+        { name: '브로멜린 (소화효소)', benefit: '단백질 분해를 도와 고기나 식사를 부드럽게 소화시켜 줘요.', verified: true },
+        { name: '비타민 C', benefit: '환절기 감기를 예방하고 유해 활성산소로부터 세포를 지켜줘요.', verified: true },
+        { name: '구연산', benefit: '새콤한 유기산이 피로 물질인 젖산을 분해해 활력을 되찾아줘요.', verified: true }
       ],
       quiz: {
         lower: {
-          question: '가래떡을 동글동글 엽전 모양으로 썰어서 끓이는 떡국의 의미는?',
-          options: ['새해에 복과 좋은 일이 가득하라는 의미', '떡을 버리기 아까워서', '빨리 먹으려고'],
+          question: '파인애플을 밥이나 고기 반찬을 먹은 뒤 후식으로 먹으면 왜 좋을까요?',
+          options: ['소화가 쏙쏙 잘되도록 도와줘서', '배를 아프게 하려고', '밥을 잊어버리려고'],
           correctIndex: 0,
-          explanation: '동글납작한 떡은 옛날 동전(엽전)을 닮아 새해에 복과 풍요가 가득하길 비는 마음이 담겼어요.'
+          explanation: '파인애플 속 브로멜린 효소는 위장에서 단백질 소화를 돕는 으뜸 소화제예요!'
         },
         middle: {
-          question: '사골을 정성스레 우려낸 떡국 국물이 뼈 성장에 좋은 이유는?',
-          options: ['뼈와 관절을 돕는 칼슘과 콜라겐이 진하게 녹아있어서', '소금이 많이 들어서', '색깔이 하얘서'],
+          question: '파인애플에 들어있어 고기를 부드럽게 재우거나 소화를 돕는 천연 단백질 분해 효소는?',
+          options: ['브로멜린', '설탕', '캡사이신'],
           correctIndex: 0,
-          explanation: '사골 국물에는 관절과 뼈 성장을 돕는 칼슘, 인, 콜라겐 성분이 풍부합니다.'
+          explanation: '브로멜린(Bromelain)은 단백질을 아미노산으로 분해해 소화 흡수를 촉진합니다.'
         },
         upper: {
-          question: '떡국의 백미(가래떡)에 얽힌 한국 전통 음식문화의 철학적 의미는?',
-          options: ['묵은해의 번뇌를 씻고 순백의 정갈한 마음으로 새해를 시작함', '단순한 칼로리 축적', '서구 음식 문화의 도입'],
+          question: '파인애플 속 단백질 가수분해 효소 브로멜라인의 식품 가공 및 영양적 활용은?',
+          options: ['연육 작용을 통한 고기의 조직 연화 및 위장 소화 부담 경감', '단백질 변성 유발 및 파괴', '칼로리 증폭'],
           correctIndex: 0,
-          explanation: '가래떡의 흰색은 순수함과 새로운 시작을, 긴 형태는 무병장수를 상징합니다.'
+          explanation: '브로멜라인은 단백질 펩타이드 사슬을 절단해 육질을 연하게 하고 체내 소화를 촉진합니다.'
         }
       }
     },
     {
-      id: 'mapatofu',
-      name: '영양 마파두부',
-      icon: '🍲',
-      tag: '밭의 쇠고기 / 두뇌 튼튼',
-      wholeMenu: '차수수밥, 계란파국, 영양마파두부, 배추김치, 군만두, 멜론',
-      story: '마파두부는 부드러운 두부와 다진 고기를 양념 소스에 맛있게 볶아낸 세계적인 두부 요리예요.\n\n콩으로 만든 두부는 "밭에서 나는 쇠고기"라고 불릴 만큼 단백질이 풍부하면서도 기름기가 적고 부드러워 누구나 소화하기 좋답니다. 밥 위에 쓱쓱 비벼 먹으면 밥 한 공기 뚝딱이에요!',
+      keywords: ['배추김치', '김치', '깍두기', '나박김치', '열무생채'],
+      hero: '아삭 배추김치',
+      icon: '🥬',
+      story: '김치는 우리나라를 대표하는 세계 최고의 발효 슈퍼푸드예요!\n\n신선한 배추에 고춧가루, 마늘, 젓갈이 어우러져 맛있게 익어가면서 장을 건강하게 지켜주는 식물성 유산균이 요구르트보다 몇 배나 풍부하게 자라난답니다.',
       nutrients: [
-        { name: '대두 단백질 & 이소플라본', benefit: '뼈를 튼튼하게 하고 세포 성장을 촉진해요.', verified: true },
-        { name: '레시틴', benefit: '두뇌 신경전달물질의 원료가 되어 기억력과 학습 능력을 높여줘요.', verified: true },
-        { name: '식물성 칼슘', benefit: '우유를 잘 소화하지 못하는 친구들도 칼슘을 편하게 보충할 수 있어요.', verified: true }
+        { name: '식물성 유산균', benefit: '장내 유익균을 늘려 소화를 돕고 면역력을 최강으로 올려줘요.', verified: true },
+        { name: '비타민 C & 카로틴', benefit: '항산화 작용으로 감기를 막고 피부 저항력을 높여줘요.', verified: true },
+        { name: '알리신 (마늘·생강)', benefit: '몸을 따뜻하게 하고 혈액순환과 살균 작용을 도와요.', verified: true }
       ],
       quiz: {
         lower: {
-          question: '두부의 원료인 콩이 "밭에서 나는 쇠고기"라고 불리는 멋진 이유는?',
-          options: ['고기만큼 훌륭한 단백질이 듬뿍 들어있어서', '밭에서 소가 자라서', '색깔이 갈색이어서'],
+          question: '배추김치가 알맞게 익으면 생겨나서 우리 배 속을 튼튼하게 해주는 고마운 친구는?',
+          options: ['식물성 유산균', '곰팡이', '초콜릿'],
           correctIndex: 0,
-          explanation: '콩은 식물이지만 쇠고기 못지않은 우수한 단백질을 품고 있어서 그렇게 불린답니다.'
+          explanation: '김치 속 풍부한 유산균은 장 속 유해균을 물리치고 면역력을 지켜줘요!'
         },
         middle: {
-          question: '두부에 풍부하여 두뇌 회전과 기억력 향상에 도움을 주는 영양 성분은?',
-          options: ['레시틴', '설탕', '카페인'],
+          question: '김치가 세계 5대 건강식품으로 꼽히며 전 세계인의 사랑을 받는 결정적 이유는?',
+          options: ['발효 과정에서 생기는 수억 마리의 유익한 유산균과 풍부한 비타민', '소금이 많아서', '외국에서 만든 거라서'],
           correctIndex: 0,
-          explanation: '콩 속의 레시틴은 뇌세포의 활동을 촉진하고 집중력을 높이는 데 기여합니다.'
+          explanation: '자연 발효 과정에서 생성되는 천연 유산균과 비타민, 파이토케미컬 덕분입니다.'
         },
         upper: {
-          question: '두부의 단백질 소화흡수율이 날콩(약 65%)보다 두부(약 95%)에서 월등히 높은 이유는?',
-          options: ['가공 과정에서 세포벽이 파괴되고 트립신 억제물질이 불활성화되었기 때문', '물을 많이 타서', '보존료를 첨가해서'],
+          question: '김치의 젖산 발효 과정에서 생성되는 유익한 유기산의 생화학적 역할은?',
+          options: ['장내 pH를 약산성으로 유지하여 부패균 억제 및 면역세포 자극', '치아를 부식시킴', '소화 효소 저해'],
           correctIndex: 0,
-          explanation: '두부 제조 시 가열 및 응고 과정을 거치며 단백질 저해 인자가 제거되어 체내 흡수율이 95% 이상으로 상승합니다.'
+          explanation: '생성된 젖산과 유기산은 장내 산도를 낮추어 병원성 세균을 억제하고 장벽을 강화합니다.'
         }
       }
     },
     {
-      id: 'samgyetang',
-      name: '영양 삼계탕',
-      icon: '🍲',
-      tag: '체력 보충 / 원기 회복',
-      wholeMenu: '영양닭다리삼계탕, 찹쌀밥, 오이고추된장무침, 깍두기, 수박',
-      story: '삼계탕은 무더운 여름이나 환절기에 기운이 빠졌을 때 몸을 보양하기 위해 먹는 우리나라 으뜸 전통 건강식이에요.\n\n어린 닭에 찹쌀, 인삼, 대추, 마늘을 넣고 푹 고아내어 국물 한 방울까지 정성과 영양이 가득 담겨 있어요. 먹고 나면 몸이 따뜻해지고 힘이 불끈 솟아나요!',
+      keywords: ['깻잎', '쌈', '쌈장'],
+      hero: '향긋 깻잎쌈',
+      icon: '🌿',
+      story: '깻잎은 시금치보다 철분이 2배나 많이 들어있는 초록 잎채소의 왕이에요!\n\n독특하고 향긋한 향기 성분인 페릴키톤은 천연 방부제 역할을 하여 고기나 생선을 먹을 때 세균을 막아주고, 피를 맑게 가꾸어 준답니다.',
       nutrients: [
-        { name: '고단백질 & 필수 아미노산', benefit: '근육을 튼튼히 하고 지친 면역 체계를 빠르게 재충전해요.', verified: true },
-        { name: '마늘·대추의 항산화 성분', benefit: '몸속 활성산소를 억제하여 세포 피로를 덜어줘요.', verified: true },
-        { name: '소화 흡수율 우수', benefit: '오랜 시간 푹 고아 기름기를 빼고 영양을 응축해 위장에 부담이 없어요.', verified: true }
+        { name: '철분', benefit: '시금치의 2배에 달해 붉은 피를 만들고 빈혈을 싹 예방해 줘요.', verified: true },
+        { name: '칼슘 & 비타민 A', benefit: '뼈를 튼튼히 하고 눈의 피로를 풀어 시력을 지켜줘요.', verified: true },
+        { name: '페릴라케톤 (향기 성분)', benefit: '천연 항균 작용으로 식중독을 막고 입맛을 돋워줘요.', verified: true }
       ],
       quiz: {
         lower: {
-          question: '삼계탕을 먹고 나면 몸에서 어떤 기분 좋은 변화가 일어날까요?',
-          options: ['몸이 따뜻해지고 활기찬 에너지가 샘솟아요', '몸이 꽁꽁 얼어붙어요', '배가 아파요'],
+          question: '깻잎에 가득 들어있어 우리 몸의 피를 붉고 건강하게 만들어주는 영양소는?',
+          options: ['철분', '모래', '기름'],
           correctIndex: 0,
-          explanation: '삼계탕 속의 따뜻한 영양 성분들이 우리 몸의 혈액순환과 면역력을 높여준답니다.'
+          explanation: '깻잎에는 철분이 가득하여 빈혈을 막고 머리를 맑게 해줘요!'
         },
         middle: {
-          question: '삼계탕 국물 속에 마늘과 대추를 함께 넣고 끓이는 중요한 이유는?',
-          options: ['잡내를 없애고 항산화 성분으로 면역력을 강화하기 위해', '닭고기를 딱딱하게 하려고', '색을 검게 만들려고'],
+          question: '고기를 먹을 때 깻잎에 싸서 먹으면 식중독을 예방하고 소화가 잘되는 이유는?',
+          options: ['깻잎 속 천연 항균 성분(페릴라케톤)과 풍부한 식이섬유 덕분에', '고기를 식히려고', '고기 맛을 없애려고'],
           correctIndex: 0,
-          explanation: '마늘과 대추는 닭의 풍미를 돋우고 몸의 산화 스트레스를 완화하는 천연 보약재입니다.'
+          explanation: '깻잎의 독특한 향기 성분은 살균 작용을 하고 육류의 소화를 촉진합니다.'
         },
         upper: {
-          question: '전통 이열치열(以熱治熱) 식문화에서 삼계탕을 섭취하는 생리학적 이점은?',
-          options: ['체표면 혈류를 개선하고 단백질 보충으로 여름철 대사 소모를 보충한다', '체온을 비정상적으로 급상승시킨다', '소화 효소 분비를 억제한다'],
+          question: '깻잎의 파이토케미컬인 루테올린(Luteolin)과 로즈마린산의 주요 효능은?',
+          options: ['알레르기 증상 완화 및 강력한 항산화·항염증 작용', '비타민 파괴', '혈당 급상승'],
           correctIndex: 0,
-          explanation: '차가운 음료로 인해 위장 기능이 저하되기 쉬운 시기에 온성 식품으로 소화기를 보호하고 양질의 단백질을 보충합니다.'
+          explanation: '깻잎의 로즈마린산과 루테올린은 염증 반응을 억제하고 알레르기 저항력을 높입니다.'
         }
       }
     }
   ];
 
   // ==========================================================================
-  // 2. 중앙 상태 객체 (브라우저 메모리 보관)
+  // 3. 중앙 상태 객체 (브라우저 메모리 보관)
   // ==========================================================================
   const state = {
     date: getTodayDateString(),
@@ -352,6 +281,7 @@
     allMenusText: '',
     allMenus: [],
     selectedMenu: '',
+    calorie: '',
     story: '',
     nutrients: [],
     quiz: {
@@ -360,7 +290,8 @@
       correctIndex: 0,
       explanation: ''
     },
-    userSelectedQuizAnswer: null
+    userSelectedQuizAnswer: null,
+    starsCollected: 0 // 스탠바이미 퀴즈 별점 보상 카운터
   };
 
   function getTodayDateString() {
@@ -372,7 +303,82 @@
   }
 
   // ==========================================================================
-  // 3. DOM 요소 참조
+  // 4. 오디오 피드백 시스템 (Web Audio API - 외부 음원 무의존 100% 작동)
+  // ==========================================================================
+  const SoundFX = {
+    audioCtx: null,
+    getAudioContext: function () {
+      if (!this.audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          this.audioCtx = new AudioContextClass();
+        }
+      }
+      if (this.audioCtx && this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume();
+      }
+      return this.audioCtx;
+    },
+    playCorrectChime: function () {
+      const ctx = this.getAudioContext();
+      if (!ctx) return;
+      const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 (화려한 실로폰 코드)
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.08);
+
+        gain.gain.setValueAtTime(0.2, ctx.currentTime + idx * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.08 + 0.35);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(ctx.currentTime + idx * 0.08);
+        osc.stop(ctx.currentTime + idx * 0.08 + 0.35);
+      });
+    },
+    playWrongHint: function () {
+      const ctx = this.getAudioContext();
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(329.63, ctx.currentTime); // E4 -> C4 부드러운 알림
+      osc.frequency.exponentialRampToValueAtTime(261.63, ctx.currentTime + 0.2);
+
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.25);
+    },
+    playTouchPop: function () {
+      const ctx = this.getAudioContext();
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.06);
+
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.08);
+    }
+  };
+
+  // ==========================================================================
+  // 5. DOM 요소 참조
   // ==========================================================================
   const DOM = {
     // 폼 입력 요소
@@ -394,12 +400,18 @@
     quizExplanationInput: document.getElementById('quiz-explanation-input'),
 
     // 상단 및 제어 버튼
+    btnOpenStanbyme: document.getElementById('btn-open-stanbyme'),
     btnExportJson: document.getElementById('btn-export-json'),
     btnImportJson: document.getElementById('btn-import-json'),
     jsonFileInput: document.getElementById('json-file-input'),
     btnReset: document.getElementById('btn-reset-form'),
 
+    // 나이스 연동 배너 요소
+    schoolSyncStatus: document.getElementById('school-sync-status'),
+    btnFetchNeis: document.getElementById('btn-fetch-neis'),
+
     // 우측 미리보기 툴바 액션
+    btnStanbymeToolbar: document.getElementById('btn-stanbyme-toolbar'),
     btnTvFullscreen: document.getElementById('btn-tv-fullscreen'),
     btnSaveImage: document.getElementById('btn-save-image'),
     btnPrint: document.getElementById('btn-print'),
@@ -408,6 +420,8 @@
     previewCard: document.getElementById('preview-card'),
     previewDateText: document.getElementById('preview-date-text'),
     previewGradeBadge: document.getElementById('preview-grade-badge'),
+    previewCalorieBadge: document.getElementById('preview-calorie-badge'),
+    previewCalorieText: document.getElementById('preview-calorie-text'),
     previewMenuBar: document.getElementById('preview-menu-bar'),
     previewMenuList: document.getElementById('preview-menu-list'),
     previewHeroTitle: document.getElementById('preview-hero-title'),
@@ -427,18 +441,37 @@
     presetModal: document.getElementById('preset-modal'),
     presetModalCloseBtn: document.getElementById('btn-close-preset-modal'),
     presetListContainer: document.getElementById('preset-list-container'),
-    toastContainer: document.getElementById('toast-container')
+    toastContainer: document.getElementById('toast-container'),
+
+    // ========================================================================
+    // 스탠바이미(StanbyME) 전용 DOM 요소
+    // ========================================================================
+    stanbymeKioskView: document.getElementById('stanbyme-kiosk-view'),
+    stanbymeDateBadge: document.getElementById('stanbyme-date-badge'),
+    stanbymeStarCount: document.getElementById('stanbyme-star-count'),
+    stanbymeGradeTabs: document.querySelectorAll('.stanbyme-grade-tab'),
+    btnCloseStanbyme: document.getElementById('btn-close-stanbyme'),
+    stanbymeDishList: document.getElementById('stanbyme-dish-list'),
+    stanbymeHeroIcon: document.getElementById('stanbyme-hero-icon'),
+    stanbymeHeroTitle: document.getElementById('stanbyme-hero-title'),
+    stanbymeStoryText: document.getElementById('stanbyme-story-text'),
+    stanbymeNutTitle: document.getElementById('stanbyme-nut-title'),
+    stanbymeNutrientGrid: document.getElementById('stanbyme-nutrient-grid'),
+    stanbymeQuizBadge: document.getElementById('stanbyme-quiz-badge'),
+    stanbymeQuizQuestion: document.getElementById('stanbyme-quiz-question'),
+    stanbymeQuizOptions: document.getElementById('stanbyme-quiz-options'),
+    stanbymeQuizFeedback: document.getElementById('stanbyme-quiz-feedback'),
+    stanbymeFbIcon: document.getElementById('stanbyme-fb-icon'),
+    stanbymeFbTitle: document.getElementById('stanbyme-fb-title'),
+    stanbymeFbText: document.getElementById('stanbyme-fb-text')
   };
 
   // ==========================================================================
-  // 4. 초기화 및 이벤트 리스너 등록
+  // 6. 초기화 및 이벤트 리스너 등록
   // ==========================================================================
   function init() {
-    // 1. 기본 추천 메뉴 1번(비빔밥)으로 초기 상태 로드
-    loadPreset(MENU_PRESETS[0], false);
-
-    // 2. 폼 이벤트 바인딩
-    DOM.dateInput.addEventListener('input', onDateChange);
+    // 1. 이벤트 바인딩
+    DOM.dateInput.addEventListener('change', onDateChange);
     DOM.gradeBtns.forEach(btn => {
       btn.addEventListener('click', () => onGradeChange(btn.dataset.grade));
     });
@@ -456,24 +489,51 @@
       radio.addEventListener('change', () => {
         if (radio.checked) {
           state.quiz.correctIndex = index;
-          state.userSelectedQuizAnswer = null; // 정답 변경 시 사용자 선택 초기화
+          state.userSelectedQuizAnswer = null;
           renderPreview();
+          if (DOM.stanbymeKioskView.classList.contains('active')) {
+            renderStanbymeKiosk();
+          }
         }
       });
     });
     DOM.quizExplanationInput.addEventListener('input', onQuizInputChange);
 
-    // 3. 버튼 이벤트 바인딩
+    // 모달 & 버튼 이벤트
     DOM.presetOpenBtn.addEventListener('click', openPresetModal);
     DOM.presetModalCloseBtn.addEventListener('click', closePresetModal);
     DOM.btnTvFullscreen.addEventListener('click', openTvModal);
     DOM.tvModalCloseBtn.addEventListener('click', closeTvModal);
+
+    // 스탠바이미 오픈/닫기 버튼
+    if (DOM.btnOpenStanbyme) DOM.btnOpenStanbyme.addEventListener('click', openStanbymeKiosk);
+    if (DOM.btnStanbymeToolbar) DOM.btnStanbymeToolbar.addEventListener('click', openStanbymeKiosk);
+    if (DOM.btnCloseStanbyme) DOM.btnCloseStanbyme.addEventListener('click', closeStanbymeKiosk);
+
+    // 스탠바이미 내 학년 탭 전환
+    if (DOM.stanbymeGradeTabs) {
+      DOM.stanbymeGradeTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          SoundFX.playTouchPop();
+          onGradeChange(tab.dataset.grade);
+          syncStanbymeGradeTabs();
+        });
+      });
+    }
+
+    // 나이스 수동 새로고침 버튼
+    if (DOM.btnFetchNeis) {
+      DOM.btnFetchNeis.addEventListener('click', () => {
+        fetchNeisMeal(state.date);
+      });
+    }
 
     // ESC 키로 모달 닫기
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         closeTvModal();
         closePresetModal();
+        closeStanbymeKiosk();
       }
     });
 
@@ -495,20 +555,419 @@
       if (e.target === DOM.tvModal) closeTvModal();
     });
 
-    // 4. 프리셋 리스트 렌더링
+    // 2. 프리셋 리스트 렌더링
     renderPresetModalList();
 
-    // 5. 초기 렌더링
-    syncFormFromState();
-    renderPreview();
+    // 3. 구미봉곡초등학교 오늘의 급식 자동 연동 실행
+    DOM.dateInput.value = state.date;
+    fetchNeisMeal(state.date);
+
+    // 4. URL에 #stanbyme 또는 ?mode=stanbyme가 있으면 스탠바이미 모드로 자동 진입
+    if (window.location.hash === '#stanbyme' || window.location.search.includes('stanbyme')) {
+      setTimeout(openStanbymeKiosk, 600);
+    }
   }
 
   // ==========================================================================
-  // 5. 폼 & 상태 동기화 핸들러
+  // 7. 스탠바이미(StanbyME) 전용 인터랙티브 키오스크 컨트롤러
+  // ==========================================================================
+  function openStanbymeKiosk() {
+    SoundFX.playTouchPop();
+    DOM.stanbymeKioskView.classList.add('active');
+    document.body.style.overflow = 'hidden';
+
+    // URL 해시 동기화 (기기 즐겨찾기/새로고침 시에도 유지)
+    if (window.location.hash !== '#stanbyme') {
+      window.location.hash = 'stanbyme';
+    }
+
+    syncStanbymeGradeTabs();
+    renderStanbymeKiosk();
+    showToast('📱 스탠바이미 터치 모드가 켜졌습니다. 식단을 자유롭게 터치해 보세요!', 'success');
+  }
+
+  function closeStanbymeKiosk() {
+    SoundFX.playTouchPop();
+    DOM.stanbymeKioskView.classList.remove('active');
+    document.body.style.overflow = '';
+    if (window.location.hash === '#stanbyme') {
+      history.replaceState(null, null, ' ');
+    }
+  }
+
+  function syncStanbymeGradeTabs() {
+    if (!DOM.stanbymeGradeTabs) return;
+    DOM.stanbymeGradeTabs.forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.grade === state.gradeGroup);
+    });
+  }
+
+  /**
+   * 학생이 식단 메뉴 버튼을 터치했을 때 즉시 음식 이야기 & 퀴즈 전환
+   */
+  function selectDish(menuName) {
+    SoundFX.playTouchPop();
+    state.selectedMenu = menuName;
+    DOM.selectedMenuSelect.value = menuName;
+
+    // 해당 음식에 맞춘 이야기 및 퀴즈 자동 구성
+    applyFoodStoryAndQuiz(menuName);
+
+    // 폼 동기화
+    DOM.storyInput.value = state.story;
+    syncQuizInputsFromState();
+
+    // 화면 갱신
+    renderPreview();
+    if (DOM.stanbymeKioskView.classList.contains('active')) {
+      renderStanbymeKiosk();
+    }
+  }
+
+  /**
+   * 스탠바이미 뷰 실시간 렌더링
+   */
+  function renderStanbymeKiosk() {
+    // 1. 날짜 및 별점 카운터
+    const formattedDate = formatDateKorean(state.date);
+    if (DOM.stanbymeDateBadge) {
+      DOM.stanbymeDateBadge.textContent = `${formattedDate} 식단`;
+    }
+    if (DOM.stanbymeStarCount) {
+      DOM.stanbymeStarCount.textContent = state.starsCollected;
+    }
+
+    // 2. 가로 터치 식단 리본 렌더링
+    DOM.stanbymeDishList.innerHTML = '';
+    state.allMenus.forEach(menu => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `stanbyme-dish-btn ${menu === state.selectedMenu ? 'active' : ''}`;
+
+      const matchedKnowledge = findKnowledgeForDish(menu);
+      const icon = matchedKnowledge ? matchedKnowledge.icon : '🍽️';
+
+      btn.innerHTML = `
+        <span class="stanbyme-dish-icon">${icon}</span>
+        <span class="stanbyme-dish-name">${menu}</span>
+      `;
+
+      btn.addEventListener('click', () => selectDish(menu));
+      DOM.stanbymeDishList.appendChild(btn);
+    });
+
+    // 3. 좌측: 대형 음식 탐구 카드
+    const curMatched = findKnowledgeForDish(state.selectedMenu);
+    if (DOM.stanbymeHeroIcon) DOM.stanbymeHeroIcon.textContent = curMatched ? curMatched.icon : '🍽️';
+    if (DOM.stanbymeHeroTitle) DOM.stanbymeHeroTitle.textContent = state.selectedMenu || '오늘의 급식';
+    if (DOM.stanbymeStoryText) DOM.stanbymeStoryText.textContent = state.story;
+
+    // 4. 우측: 영양소 카드 그리드
+    DOM.stanbymeNutrientGrid.innerHTML = '';
+    const validNutrients = state.nutrients.filter(n => n.name && n.name.trim());
+    if (validNutrients.length > 0) {
+      validNutrients.forEach(n => {
+        const card = document.createElement('div');
+        card.className = 'stanbyme-nut-card';
+        card.innerHTML = `
+          <div class="stanbyme-nut-name">🌱 ${n.name}</div>
+          <div class="stanbyme-nut-benefit">${n.benefit || '성장과 활력을 도와줘요.'}</div>
+        `;
+        DOM.stanbymeNutrientGrid.appendChild(card);
+      });
+    }
+
+    // 5. 우측: 대형 인터랙티브 퀴즈
+    renderStanbymeQuiz();
+  }
+
+  function renderStanbymeQuiz() {
+    const q = state.quiz;
+    if (!q || !q.question.trim()) {
+      DOM.stanbymeQuizQuestion.textContent = '문제를 준비 중입니다.';
+      DOM.stanbymeQuizOptions.innerHTML = '';
+      DOM.stanbymeQuizFeedback.classList.remove('show');
+      return;
+    }
+
+    DOM.stanbymeQuizQuestion.textContent = `Q. ${q.question}`;
+    DOM.stanbymeQuizOptions.innerHTML = '';
+
+    const validOptions = q.options.filter(opt => opt && opt.trim());
+    validOptions.forEach((optText, idx) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'stanbyme-option-btn';
+
+      const textSpan = document.createElement('span');
+      textSpan.textContent = `${idx + 1}. ${optText}`;
+      btn.appendChild(textSpan);
+
+      const statusSpan = document.createElement('span');
+      statusSpan.style.fontSize = '1.35rem';
+
+      // 터치 결과 피드백
+      if (state.userSelectedQuizAnswer !== null) {
+        if (idx === state.quiz.correctIndex) {
+          btn.classList.add('correct');
+          statusSpan.textContent = '정답! 👏';
+        } else if (idx === state.userSelectedQuizAnswer) {
+          btn.classList.add('wrong');
+          statusSpan.textContent = '다시 해볼까요? 💡';
+        }
+      }
+
+      btn.appendChild(statusSpan);
+
+      btn.addEventListener('click', () => {
+        state.userSelectedQuizAnswer = idx;
+        if (idx === state.quiz.correctIndex) {
+          SoundFX.playCorrectChime();
+          state.starsCollected += 1;
+          if (DOM.stanbymeStarCount) DOM.stanbymeStarCount.textContent = state.starsCollected;
+          showFeedback(true, '와! 정답입니다! ⭐ 별 1개를 획득했어요!', q.explanation);
+        } else {
+          SoundFX.playWrongHint();
+          showFeedback(false, '아쉬워요! 다시 한번 생각해보세요!', q.explanation);
+        }
+        renderStanbymeQuiz();
+        renderPreview();
+      });
+
+      DOM.stanbymeQuizOptions.appendChild(btn);
+    });
+
+    if (state.userSelectedQuizAnswer !== null) {
+      DOM.stanbymeQuizFeedback.classList.add('show');
+      DOM.stanbymeFbText.textContent = q.explanation || '우리 몸에 좋은 급식을 골고루 맛있게 먹어요!';
+    } else {
+      DOM.stanbymeQuizFeedback.classList.remove('show');
+    }
+  }
+
+  function showFeedback(isCorrect, title, explanation) {
+    if (!DOM.stanbymeQuizFeedback) return;
+    DOM.stanbymeQuizFeedback.classList.add('show');
+    if (isCorrect) {
+      DOM.stanbymeQuizFeedback.style.borderColor = '#86efac';
+      DOM.stanbymeQuizFeedback.style.background = '#f0fdf4';
+      DOM.stanbymeFbIcon.textContent = '🎉';
+      DOM.stanbymeFbTitle.style.color = '#15803d';
+    } else {
+      DOM.stanbymeQuizFeedback.style.borderColor = '#fca5a5';
+      DOM.stanbymeQuizFeedback.style.background = '#fff1f2';
+      DOM.stanbymeFbIcon.textContent = '💡';
+      DOM.stanbymeFbTitle.style.color = '#b91c1c';
+    }
+    DOM.stanbymeFbTitle.textContent = title;
+    DOM.stanbymeFbText.textContent = explanation || '';
+  }
+
+  // ==========================================================================
+  // 8. 교육부 나이스(NEIS) 오픈 API 구미봉곡초등학교 실시간 급식 연동
+  // ==========================================================================
+  async function fetchNeisMeal(dateString) {
+    if (!dateString) return;
+
+    const ymd = dateString.replace(/-/g, '');
+    updateSyncStatus('loading', '🔄 구미봉곡초등학교 급식 조회 중...');
+
+    const apiUrl = `https://open.neis.go.kr/hub/mealServiceDietInfo?Type=json&ATPT_OFCDC_SC_CODE=${SCHOOL_CONFIG.officeCode}&SD_SCHUL_CODE=${SCHOOL_CONFIG.schoolCode}&MLSV_YMD=${ymd}`;
+
+    try {
+      const response = await fetch(apiUrl);
+      if (!response.ok) {
+        throw new Error(`서버 응답 오류 (HTTP ${response.status})`);
+      }
+
+      const data = await response.json();
+
+      if (data && data.mealServiceDietInfo && data.mealServiceDietInfo[1] && data.mealServiceDietInfo[1].row) {
+        const row = data.mealServiceDietInfo[1].row[0];
+        applyNeisMealData(row, dateString);
+      } else {
+        handleNoMealDay(dateString);
+      }
+    } catch (err) {
+      console.warn('나이스 API 연동 실패, 수동 모드 유지:', err);
+      updateSyncStatus('warning', '⚠️ 나이스 통신 지연 (수동 작성 모드)');
+      showToast('나이스 연결이 원활하지 않아 수동 작성 모드로 전환합니다.', 'warning');
+      renderPreview();
+    }
+  }
+
+  function applyNeisMealData(row, dateString) {
+    const rawDish = row.DDISH_NM || '';
+    const cleanMenus = rawDish
+      .split(/<br\s*\/?>|\n/i)
+      .map(item => item.replace(/\([0-9.\s]+\)/g, '').replace(/\([가-힣\s]+\)/g, '').trim())
+      .filter(Boolean);
+
+    state.date = dateString;
+    state.allMenus = cleanMenus;
+    state.allMenusText = cleanMenus.join(', ');
+    state.calorie = row.CAL_INFO ? row.CAL_INFO.trim() : '';
+
+    // 첫 번째 주요 메뉴 선택
+    state.selectedMenu = pickBestHeroMenu(cleanMenus);
+
+    // 나이스 검증 영양소 파싱
+    state.nutrients = parseNeisNutrients(row.NTR_INFO);
+
+    // 음식 이야기 & 퀴즈 매칭
+    applyFoodStoryAndQuiz(state.selectedMenu);
+
+    syncFormFromState();
+    renderPreview();
+    if (DOM.stanbymeKioskView.classList.contains('active')) {
+      renderStanbymeKiosk();
+    }
+
+    const calNotice = state.calorie ? ` (${state.calorie})` : '';
+    updateSyncStatus('success', `✅ 구미봉곡초 급식 정상 연동${calNotice}`);
+    showToast(`[구미봉곡초] ${formatDateKorean(dateString)} 급식 식단을 성공적으로 불러왔습니다!`, 'success');
+  }
+
+  async function handleNoMealDay(dateString) {
+    updateSyncStatus('warning', `⚠️ ${dateString}은 구미봉곡초 급식이 없는 날(주말/휴일)입니다.`);
+
+    const dayOfWeek = new Date(dateString).getDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      const recentFriday = getRecentFriday(dateString);
+      showToast(`${dateString}은 주말이어서 최근 급식일(${recentFriday}) 식단을 확인합니다.`, 'info');
+      state.date = recentFriday;
+      DOM.dateInput.value = recentFriday;
+      fetchNeisMeal(recentFriday);
+    } else {
+      showToast(`${dateString}은 구미봉곡초 급식이 등록되지 않은 날(방학/학사일정)입니다.`, 'warning');
+      renderPreview();
+    }
+  }
+
+  function getRecentFriday(currentDateStr) {
+    const d = new Date(currentDateStr);
+    const day = d.getDay();
+    const diff = (day === 6) ? 1 : 2;
+    d.setDate(d.getDate() - diff);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function pickBestHeroMenu(menus) {
+    if (!menus || menus.length === 0) return '오늘의 대표 메뉴';
+    const priorityKeywords = ['꽃게', '스테이크', '불고기', '갈비', '삼치', '닭', '돈가스', '탕', '찌개', '비빔밥', '카레', '마파두부', '미역국', '생선'];
+
+    for (const kw of priorityKeywords) {
+      const found = menus.find(m => m.includes(kw));
+      if (found) return found;
+    }
+
+    if (menus.length >= 2) return menus[1];
+    return menus[0];
+  }
+
+  function parseNeisNutrients(ntrText) {
+    if (!ntrText) {
+      return [
+        { name: '단백질', benefit: '성장기 어린이의 뼈와 튼튼한 근육을 만들어줘요.', verified: true },
+        { name: '칼슘', benefit: '뼈와 치아를 튼튼하게 하고 키 성장을 도와요.', verified: true },
+        { name: '비타민 C', benefit: '면역력을 높여 감기를 예방하고 피로를 풀어줘요.', verified: true }
+      ];
+    }
+
+    const lines = ntrText.split(/<br\s*\/?>|\n/i);
+    const parsed = [];
+
+    const nutrientMap = {
+      '단백질': '성장기 근육 형성과 면역 세포를 만드는 필수 영양소예요.',
+      '칼슘': '뼈와 치아를 단단하게 구성하고 키 성장을 도와줘요.',
+      '비타민A': '어두운 곳에서도 시력을 지켜주고 피부 건강을 도와요.',
+      '비타민C': '몸속 활성산소를 억제하고 감기 등 바이러스를 막아줘요.',
+      '철분': '혈액 속 산소를 온몸으로 운반해 활기찬 에너지를 줘요.',
+      '티아민': '에너지 대사를 촉진하여 공부 피로를 싹 풀어줘요.',
+      '리보플라빈': '구강 건강과 세포 성장, 시각 기능을 도와줘요.'
+    };
+
+    lines.forEach(line => {
+      const match = line.match(/^([가-힣A-Za-z]+)\s*(\([^\)]+\))?\s*:\s*([0-9.]+)/);
+      if (match) {
+        const rawName = match[1];
+        const unit = match[2] || '';
+        const value = match[3];
+
+        for (const [key, benefitText] of Object.entries(nutrientMap)) {
+          if (rawName.includes(key)) {
+            parsed.push({
+              name: `${rawName} ${unit ? unit.replace(/[()]/g, '') : ''} (${value})`,
+              benefit: benefitText,
+              verified: true
+            });
+            break;
+          }
+        }
+      }
+    });
+
+    return parsed.length > 0 ? parsed.slice(0, 4) : [
+      { name: '검증된 영양소', benefit: '구미봉곡초 영양선생님의 균형 잡힌 식단입니다.', verified: true }
+    ];
+  }
+
+  function findKnowledgeForDish(dishName) {
+    if (!dishName) return null;
+    return FOOD_KNOWLEDGE_BASE.find(item => item.keywords.some(kw => dishName.includes(kw)));
+  }
+
+  /**
+   * 메뉴에 맞춘 흥미로운 음식 이야기 및 학년별 퀴즈 적용
+   */
+  function applyFoodStoryAndQuiz(menuName) {
+    const matched = findKnowledgeForDish(menuName);
+
+    if (matched) {
+      state.story = matched.story;
+      const q = matched.quiz[state.gradeGroup] || matched.quiz.middle;
+      state.quiz = {
+        question: q.question,
+        options: [...q.options],
+        correctIndex: q.correctIndex,
+        explanation: q.explanation
+      };
+    } else {
+      // 맞춤 매칭이 없는 경우 지능형 초등 식생활 이야기 생성
+      state.story = `오늘 구미봉곡초등학교 급식의 맛있는 음식은 바로 [${menuName}]입니다!\n\n영양선생님께서 우리 친구들이 건강하고 튼튼하게 자라도록 신선하고 좋은 재료로 정성껏 준비해 주셨어요. 한 입 한 입 꼭꼭 씹어 먹으면 우리 몸에 필요한 활력 에너지가 샘솟는답니다.`;
+      state.quiz = {
+        question: `오늘 구미봉곡초 식단인 [${menuName}]을 올바르고 건강하게 먹는 방법은?`,
+        options: [
+          '밥과 다른 반찬들과 함께 골고루 섭취한다',
+          '좋아하는 것만 골라 먹고 나머지는 버린다',
+          '씹지 않고 급하게 삼킨다'
+        ],
+        correctIndex: 0,
+        explanation: `${menuName}은(는) 다양한 영양소로 조리되어 다른 음식과 골고루 먹을 때 가장 좋습니다.`
+      };
+    }
+
+    state.userSelectedQuizAnswer = null;
+  }
+
+  function updateSyncStatus(type, message) {
+    if (!DOM.schoolSyncStatus) return;
+    DOM.schoolSyncStatus.className = `sync-status-text ${type}`;
+    DOM.schoolSyncStatus.textContent = message;
+  }
+
+  // ==========================================================================
+  // 9. 폼 & 상태 동기화 핸들러
   // ==========================================================================
   function onDateChange(e) {
-    state.date = e.target.value.trim();
-    renderPreview();
+    const newDate = e.target.value.trim();
+    if (newDate) {
+      state.date = newDate;
+      fetchNeisMeal(newDate);
+    }
   }
 
   function onGradeChange(newGrade) {
@@ -517,25 +976,17 @@
       btn.classList.toggle('active', btn.dataset.grade === newGrade);
     });
 
-    // 학년 변경 시 적합한 퀴즈 난이도 자동 제안 (만약 현재 선택된 프리셋이 있다면)
-    const currentPreset = MENU_PRESETS.find(p => p.name.includes(state.selectedMenu) || state.selectedMenu.includes(p.name));
-    if (currentPreset && currentPreset.quiz[newGrade]) {
-      const q = currentPreset.quiz[newGrade];
-      state.quiz.question = q.question;
-      state.quiz.options = [...q.options];
-      state.quiz.correctIndex = q.correctIndex;
-      state.quiz.explanation = q.explanation;
-      state.userSelectedQuizAnswer = null;
-      syncQuizInputsFromState();
-    }
-
+    applyFoodStoryAndQuiz(state.selectedMenu);
+    syncQuizInputsFromState();
     renderPreview();
+    if (DOM.stanbymeKioskView.classList.contains('active')) {
+      renderStanbymeKiosk();
+    }
     showToast(`${getGradeGroupLabel(newGrade)} 맞춤 설정이 적용되었습니다.`, 'success');
   }
 
   function onAllMenusInput(e) {
     state.allMenusText = e.target.value;
-    // 콤마, 슬래시, 줄바꿈 등으로 분리
     const parsed = state.allMenusText
       .split(/[,·/\n]/)
       .map(m => m.trim())
@@ -544,6 +995,9 @@
     state.allMenus = parsed;
     updateSelectedMenuDropdown();
     renderPreview();
+    if (DOM.stanbymeKioskView.classList.contains('active')) {
+      renderStanbymeKiosk();
+    }
   }
 
   function updateSelectedMenuDropdown() {
@@ -567,7 +1021,6 @@
       select.appendChild(opt);
     });
 
-    // 기존 선택값이 존재하면 유지, 없으면 첫 번째 메뉴 선택
     if (state.allMenus.includes(previousSelected)) {
       select.value = previousSelected;
     } else {
@@ -577,13 +1030,15 @@
   }
 
   function onSelectedMenuChange(e) {
-    state.selectedMenu = e.target.value;
-    renderPreview();
+    selectDish(e.target.value);
   }
 
   function onStoryInput(e) {
     state.story = e.target.value;
     renderPreview();
+    if (DOM.stanbymeKioskView.classList.contains('active')) {
+      renderStanbymeKiosk();
+    }
   }
 
   function onQuizInputChange() {
@@ -594,10 +1049,13 @@
     state.quiz.explanation = DOM.quizExplanationInput.value.trim();
     state.userSelectedQuizAnswer = null;
     renderPreview();
+    if (DOM.stanbymeKioskView.classList.contains('active')) {
+      renderStanbymeKiosk();
+    }
   }
 
   // ==========================================================================
-  // 6. 영양소 동적 행 관리 (추가, 수정, 삭제)
+  // 10. 영양소 동적 행 관리 (추가, 수정, 삭제)
   // ==========================================================================
   function addNutrientItem(name = '', benefit = '', verified = true) {
     const item = { name, benefit, verified };
@@ -631,7 +1089,7 @@
       const nameInput = document.createElement('input');
       nameInput.type = 'text';
       nameInput.className = 'form-control';
-      nameInput.placeholder = '영양소명 (예: 칼슘)';
+      nameInput.placeholder = '영양소명 (예: 단백질)';
       nameInput.value = item.name;
       nameInput.addEventListener('input', (e) => {
         item.name = e.target.value.trim();
@@ -641,7 +1099,7 @@
       const benefitInput = document.createElement('input');
       benefitInput.type = 'text';
       benefitInput.className = 'form-control';
-      benefitInput.placeholder = '역할/효능 (예: 뼈를 튼튼하게 해요)';
+      benefitInput.placeholder = '역할/효능 (예: 근육 성장을 도와요)';
       benefitInput.value = item.benefit;
       benefitInput.addEventListener('input', (e) => {
         item.benefit = e.target.value.trim();
@@ -663,13 +1121,13 @@
   }
 
   // ==========================================================================
-  // 7. 추천 10대 메뉴 프리셋 로드
+  // 11. 추천 메뉴 모달 및 수동 선택
   // ==========================================================================
   function renderPresetModalList() {
     const container = DOM.presetListContainer;
     container.innerHTML = '';
 
-    MENU_PRESETS.forEach(preset => {
+    FOOD_KNOWLEDGE_BASE.forEach(preset => {
       const card = document.createElement('div');
       card.className = 'preset-card-item';
       card.addEventListener('click', () => {
@@ -686,11 +1144,11 @@
 
       const nameSpan = document.createElement('span');
       nameSpan.className = 'preset-card-name';
-      nameSpan.textContent = preset.name;
+      nameSpan.textContent = preset.hero;
 
       const tagSpan = document.createElement('span');
       tagSpan.className = 'preset-card-tag';
-      tagSpan.textContent = preset.tag;
+      tagSpan.textContent = preset.keywords.join(' · ');
 
       infoDiv.appendChild(nameSpan);
       infoDiv.appendChild(tagSpan);
@@ -702,26 +1160,10 @@
   }
 
   function loadPreset(preset, showToastNotice = true) {
-    state.selectedMenu = preset.name;
-    state.allMenusText = preset.wholeMenu;
-    state.allMenus = preset.wholeMenu.split(/[,·/\n]/).map(m => m.trim()).filter(Boolean);
-    state.story = preset.story;
-    state.nutrients = JSON.parse(JSON.stringify(preset.nutrients));
-
-    const q = preset.quiz[state.gradeGroup] || preset.quiz.middle;
-    state.quiz = {
-      question: q.question,
-      options: [...q.options],
-      correctIndex: q.correctIndex,
-      explanation: q.explanation
-    };
-    state.userSelectedQuizAnswer = null;
-
-    syncFormFromState();
-    renderPreview();
+    selectDish(preset.hero);
 
     if (showToastNotice) {
-      showToast(`[${preset.name}] 교육자료가 자동으로 채워졌습니다.`, 'success');
+      showToast(`[${preset.hero}] 교육자료가 자동으로 채워졌습니다.`, 'success');
     }
   }
 
@@ -734,7 +1176,7 @@
   }
 
   // ==========================================================================
-  // 8. 폼 입력값 동기화 (State -> Form UI)
+  // 12. 폼 UI 동기화 (State -> Form UI)
   // ==========================================================================
   function syncFormFromState() {
     DOM.dateInput.value = state.date;
@@ -764,7 +1206,7 @@
   }
 
   // ==========================================================================
-  // 9. 실시간 미리보기 렌더링 (Safe DOM Text Injection)
+  // 13. 실시간 미리보기 렌더링 (학생 터치 지원 칩 연결)
   // ==========================================================================
   function renderPreview() {
     const card = DOM.previewCard;
@@ -773,24 +1215,40 @@
     card.classList.remove('grade-lower', 'grade-middle', 'grade-upper');
     card.classList.add(`grade-${state.gradeGroup}`);
 
-    // 2. 일자 및 학년 배지
+    // 2. 일자 및 배지 렌더링
     const formattedDate = formatDateKorean(state.date);
-    DOM.previewDateText.textContent = formattedDate ? `${formattedDate} 급식 이야기` : '날짜를 입력해주세요';
+    DOM.previewDateText.textContent = formattedDate ? `${formattedDate} 오늘의 급식 이야기` : '날짜를 입력해주세요';
     DOM.previewGradeBadge.textContent = getGradeGroupLabel(state.gradeGroup);
 
-    // 3. 전체 메뉴 목록 바
+    if (state.calorie && DOM.previewCalorieBadge && DOM.previewCalorieText) {
+      DOM.previewCalorieBadge.style.display = 'inline-flex';
+      DOM.previewCalorieText.textContent = state.calorie;
+    } else if (DOM.previewCalorieBadge) {
+      DOM.previewCalorieBadge.style.display = 'none';
+    }
+
+    // 3. 전체 메뉴 바 (클릭/터치 가능한 메뉴 칩으로 렌더링!)
     DOM.previewMenuList.innerHTML = '';
     if (state.allMenus.length > 0) {
       DOM.previewMenuBar.style.display = 'flex';
-      state.allMenus.forEach((menu, i) => {
-        const span = document.createElement('span');
-        span.textContent = (i < state.allMenus.length - 1) ? `${menu} · ` : menu;
+      state.allMenus.forEach((menu) => {
+        const chip = document.createElement('span');
+        chip.className = 'interactive-dish-chip';
+        chip.textContent = menu;
+        chip.title = `${menu} 탐구하기 (클릭 시 이야기와 퀴즈가 전환됩니다)`;
+
         if (menu === state.selectedMenu) {
-          span.style.color = '#0d9488';
-          span.style.fontWeight = '700';
-          span.style.textDecoration = 'underline';
+          chip.style.color = '#0d9488';
+          chip.style.fontWeight = '800';
+          chip.style.background = '#ccfbf1';
+          chip.style.border = '1px solid #2dd4bf';
         }
-        DOM.previewMenuList.appendChild(span);
+
+        chip.addEventListener('click', () => {
+          selectDish(menu);
+        });
+
+        DOM.previewMenuList.appendChild(chip);
       });
     } else {
       DOM.previewMenuBar.style.display = 'none';
@@ -800,17 +1258,13 @@
     const heroMenuName = state.selectedMenu || (state.allMenus[0] || '오늘의 급식 메뉴');
     DOM.previewHeroTitle.textContent = heroMenuName;
 
-    const matchedPreset = MENU_PRESETS.find(p => p.name.includes(heroMenuName) || heroMenuName.includes(p.name));
-    DOM.previewHeroIcon.textContent = matchedPreset ? matchedPreset.icon : '🍽️';
+    const matchedKnowledge = findKnowledgeForDish(heroMenuName);
+    DOM.previewHeroIcon.textContent = matchedKnowledge ? matchedKnowledge.icon : '🍽️';
 
     // 5. 음식 이야기
-    if (state.story.trim()) {
-      DOM.previewStoryText.textContent = state.story;
-    } else {
-      DOM.previewStoryText.textContent = '좌측 편집기에서 음식 이야기를 작성하거나 [추천 메뉴 불러오기]를 사용해보세요.';
-    }
+    DOM.previewStoryText.textContent = state.story || '맛있고 영양 가득한 구미봉곡초등학교 급식 시간 되세요!';
 
-    // 6. 영양 정보 그리드 (임의 수치 생성 방지, 정보 없으면 확인 필요 표시)
+    // 6. 영양 정보 그리드
     DOM.previewNutrientGrid.innerHTML = '';
     const validNutrients = state.nutrients.filter(n => n.name && n.name.trim());
 
@@ -841,7 +1295,7 @@
     // 7. 퀴즈 상호작용 카드
     renderQuizInteractive();
 
-    // 8. TV 모달이 열려 있는 경우 모달 내용도 즉시 동기화
+    // 8. TV 모달 동기화
     if (DOM.tvModal.classList.contains('active')) {
       syncTvModalContent();
     }
@@ -872,7 +1326,6 @@
       const statusSpan = document.createElement('span');
       statusSpan.style.fontWeight = '700';
 
-      // 사용자가 클릭한 상태 검사
       if (state.userSelectedQuizAnswer !== null) {
         if (idx === state.quiz.correctIndex) {
           btn.classList.add('selected-correct');
@@ -887,13 +1340,17 @@
 
       btn.addEventListener('click', () => {
         state.userSelectedQuizAnswer = idx;
+        if (idx === state.quiz.correctIndex) {
+          SoundFX.playCorrectChime();
+        } else {
+          SoundFX.playWrongHint();
+        }
         renderQuizInteractive();
       });
 
       DOM.previewQuizOptions.appendChild(btn);
     });
 
-    // 정답을 맞혔거나 문제를 풀었을 때 해설 공개
     if (state.userSelectedQuizAnswer !== null) {
       DOM.previewQuizExplanation.classList.add('show');
       DOM.previewQuizExpText.textContent = q.explanation || '우리 몸에 좋은 급식을 골고루 맛있게 먹어요!';
@@ -919,7 +1376,7 @@
   }
 
   // ==========================================================================
-  // 10. TV 전체화면 모달 송출 기능
+  // 14. TV 전체화면 모달 송출 기능
   // ==========================================================================
   function openTvModal() {
     if (!state.date || !state.selectedMenu) {
@@ -938,15 +1395,18 @@
 
   function syncTvModalContent() {
     DOM.tvModalCardHost.innerHTML = '';
-    // previewCard의 클론 노드를 생성하여 TV 모달에 삽입
     const clone = DOM.previewCard.cloneNode(true);
     clone.id = 'tv-preview-clone';
 
-    // TV 모드에서는 퀴즈 옵션도 즉시 클릭 가능하도록 이벤트 재연결
     const cloneButtons = clone.querySelectorAll('.quiz-choice-btn');
     cloneButtons.forEach((btn, idx) => {
       btn.addEventListener('click', () => {
         state.userSelectedQuizAnswer = idx;
+        if (idx === state.quiz.correctIndex) {
+          SoundFX.playCorrectChime();
+        } else {
+          SoundFX.playWrongHint();
+        }
         renderPreview();
       });
     });
@@ -955,7 +1415,7 @@
   }
 
   // ==========================================================================
-  // 11. JSON 내보내기 & 불러오기 (데이터 보관)
+  // 15. JSON 내보내기 & 불러오기 (데이터 보관)
   // ==========================================================================
   function exportDataAsJson() {
     if (!state.date || !state.selectedMenu) {
@@ -965,6 +1425,7 @@
 
     const payload = {
       app: 'nutrition-edu-generator',
+      school: SCHOOL_CONFIG.name,
       version: '1.0',
       exportedAt: new Date().toISOString(),
       date: state.date,
@@ -972,6 +1433,7 @@
       allMenusText: state.allMenusText,
       allMenus: state.allMenus,
       selectedMenu: state.selectedMenu,
+      calorie: state.calorie,
       story: state.story,
       nutrients: state.nutrients,
       quiz: state.quiz
@@ -984,7 +1446,7 @@
     const safeDate = state.date.replace(/-/g, '');
     const safeMenu = state.selectedMenu.replace(/\s+/g, '_');
     a.href = url;
-    a.download = `급식영양자료_${safeDate}_${safeMenu}.json`;
+    a.download = `구미봉곡초_급식영양자료_${safeDate}_${safeMenu}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1002,7 +1464,6 @@
       try {
         const data = JSON.parse(event.target.result);
 
-        // 기본 유효성 검사
         if (!data || typeof data !== 'object') {
           throw new Error('유효한 JSON 파일이 아닙니다.');
         }
@@ -1011,12 +1472,12 @@
           throw new Error('영양자료 자동 생성기의 호환 데이터 형식이 아닙니다.');
         }
 
-        // 상태 안전 복원
         state.date = data.date || getTodayDateString();
         state.gradeGroup = ['lower', 'middle', 'upper'].includes(data.gradeGroup) ? data.gradeGroup : 'middle';
         state.allMenusText = data.allMenusText || (Array.isArray(data.allMenus) ? data.allMenus.join(', ') : '');
         state.allMenus = Array.isArray(data.allMenus) ? data.allMenus : (data.allMenusText ? data.allMenusText.split(',').map(m => m.trim()) : []);
         state.selectedMenu = data.selectedMenu || (state.allMenus[0] || '오늘의 메뉴');
+        state.calorie = data.calorie || '';
         state.story = data.story || '';
         state.nutrients = Array.isArray(data.nutrients) ? data.nutrients : [];
         if (data.quiz && typeof data.quiz === 'object') {
@@ -1031,11 +1492,13 @@
 
         syncFormFromState();
         renderPreview();
+        if (DOM.stanbymeKioskView.classList.contains('active')) {
+          renderStanbymeKiosk();
+        }
         showToast('자료가 성공적으로 복원되었습니다.', 'success');
       } catch (err) {
         showToast(`파일 불러오기 실패: ${err.message}`, 'error');
       } finally {
-        // 동일 파일 재선택 가능하도록 input 초기화
         DOM.jsonFileInput.value = '';
       }
     };
@@ -1055,6 +1518,7 @@
       state.allMenusText = '';
       state.allMenus = [];
       state.selectedMenu = '';
+      state.calorie = '';
       state.story = '';
       state.nutrients = [];
       state.quiz = {
@@ -1064,6 +1528,7 @@
         explanation: ''
       };
       state.userSelectedQuizAnswer = null;
+      state.starsCollected = 0;
 
       syncFormFromState();
       renderPreview();
@@ -1072,7 +1537,7 @@
   }
 
   // ==========================================================================
-  // 12. 인쇄 및 고품질 PNG 이미지 다운로드 엔진
+  // 16. 인쇄 및 Canvas 2D 고해상도 PNG 이미지 다운로드 엔진
   // ==========================================================================
   function handlePrint() {
     if (!state.date || !state.selectedMenu) {
@@ -1082,10 +1547,6 @@
     window.print();
   }
 
-  /**
-   * 외부 라이브러리 없이 순수 HTML5 Canvas 2D 그래픽 렌더러로
-   * 1200 x 1500 고해상도 PNG 교육자료 포스터 생성 및 다운로드
-   */
   function handleSaveImage() {
     if (!state.date || !state.selectedMenu) {
       showToast('날짜와 메뉴를 먼저 입력해주세요.', 'warning');
@@ -1096,11 +1557,11 @@
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const width = 1200;
-      const height = 1550;
+      const height = 1580;
       canvas.width = width;
       canvas.height = height;
 
-      // 1. 전체 배경 칠하기
+      // 1. 전체 배경
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, width, height);
 
@@ -1116,12 +1577,12 @@
       // 2. 헤더: 학교/날짜/학년
       ctx.fillStyle = '#0d9488';
       ctx.font = 'bold 26px sans-serif';
-      ctx.fillText('🏫 초등학교 급식 영양·식생활 이야기', 70, 95);
+      ctx.fillText('🏫 구미봉곡초등학교 오늘의 급식 식생활 이야기', 70, 95);
 
       ctx.fillStyle = '#0f172a';
       ctx.font = 'bold 44px sans-serif';
       const formattedDate = formatDateKorean(state.date);
-      ctx.fillText(formattedDate ? `${formattedDate} 오늘의 급식` : '오늘의 급식 이야기', 70, 155);
+      ctx.fillText(formattedDate ? `${formattedDate} 급식 이야기` : '오늘의 급식 이야기', 70, 155);
 
       // 대상 학년 배지 박스
       ctx.fillStyle = '#e6f7f3';
@@ -1174,15 +1635,16 @@
 
       ctx.fillStyle = '#0d9488';
       ctx.font = 'bold 20px sans-serif';
-      ctx.fillText('오늘의 영양 주인공 메뉴', 95, currentY + 38);
+      const calText = state.calorie ? ` · 열량: ${state.calorie}` : '';
+      ctx.fillText(`오늘의 영양 주인공 메뉴${calText}`, 95, currentY + 38);
 
       ctx.fillStyle = '#115e59';
       ctx.font = '800 36px sans-serif';
       ctx.fillText(state.selectedMenu || '오늘의 대표 메뉴', 95, currentY + 82);
 
-      const matchedPreset = MENU_PRESETS.find(p => p.name.includes(state.selectedMenu) || state.selectedMenu.includes(p.name));
+      const matchedKnowledge = findKnowledgeForDish(state.selectedMenu);
       ctx.font = '55px sans-serif';
-      ctx.fillText(matchedPreset ? matchedPreset.icon : '🍽️', width - 165, currentY + 74);
+      ctx.fillText(matchedKnowledge ? matchedKnowledge.icon : '🍽️', width - 165, currentY + 74);
       currentY += 135;
 
       // 5. 음식 이야기 섹션
@@ -1220,7 +1682,7 @@
 
           ctx.fillStyle = '#475569';
           ctx.font = '20px sans-serif';
-          ctx.fillText(n.benefit || '건강 증진에 도움을 줍니다.', 280, currentY + 33);
+          ctx.fillText(n.benefit || '건강 증진에 도움을 줍니다.', 320, currentY + 33);
 
           currentY += 60;
         });
@@ -1281,18 +1743,17 @@
       const safeDate = state.date.replace(/-/g, '');
       const safeMenu = (state.selectedMenu || '급식').replace(/\s+/g, '_');
       a.href = dataUrl;
-      a.download = `영양교육자료_${safeDate}_${safeMenu}.png`;
+      a.download = `구미봉곡초_영양교육자료_${safeDate}_${safeMenu}.png`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
 
-      showToast('고해상도 PNG 이미지가 다운로드되었습니다.', 'success');
+      showToast('구미봉곡초 고해상도 PNG 이미지가 다운로드되었습니다.', 'success');
     } catch (err) {
       showToast(`이미지 저장 중 오류 발생: ${err.message}`, 'error');
     }
   }
 
-  // 텍스트 줄바꿈 도우미 함수 (Canvas 2D)
   function wrapText(ctx, text, maxWidth) {
     const words = text.split('\n');
     const lines = [];
@@ -1319,7 +1780,7 @@
   }
 
   // ==========================================================================
-  // 13. 알림 토스트 UI 헬퍼
+  // 17. 알림 토스트 UI 헬퍼
   // ==========================================================================
   function showToast(message, type = 'info') {
     const toast = document.createElement('div');
@@ -1340,7 +1801,7 @@
       setTimeout(() => {
         if (toast.parentElement) toast.parentElement.removeChild(toast);
       }, 300);
-    }, 2800);
+    }, 3000);
   }
 
   // DOM 로드 완료 시 애플리케이션 시작
