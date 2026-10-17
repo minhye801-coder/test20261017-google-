@@ -1,7 +1,7 @@
 /**
  * 영양자료 자동 생성기 (app.js)
  * 초등 영양교사용 급식 연계 식생활 교육자료 제작 & 스탠바이미(StanbyME) 터치 키오스크 엔진
- * - 구미봉곡초등학교 (경북 구미시, 코드: R10 / 8801088) 교육부 나이스(NEIS) 오픈API 실시간 자동 연동
+ * - 전국 학교 검색 (교육부 나이스 오픈API 실시간 연동)
  * - 순수 Vanilla JavaScript (외부 라이브러리 없는 순수 정적 웹, GitHub Pages 100% 호환)
  */
 
@@ -9,13 +9,13 @@
   'use strict';
 
   // ==========================================================================
-  // 1. 학교 정보 설정 (구미봉곡초등학교)
+  // 1. 현재 선택된 학교 정보 (기본값: 구미봉곡초등학교, 검색으로 변경 가능)
   // ==========================================================================
-  const SCHOOL_CONFIG = {
+  let currentSchool = {
     name: '구미봉곡초등학교',
     officeCode: 'R10', // 경상북도교육청
     schoolCode: '8801088', // 구미봉곡초등학교 표준코드
-    location: '경상북도 구미시 봉곡동'
+    location: '경상북도 구미시'
   };
 
   // ==========================================================================
@@ -119,7 +119,7 @@
       keywords: ['닭불고기', '짜장닭', '닭갈비', '닭강정', '파닭', '닭'],
       hero: '짜장닭불고기',
       icon: '🍗',
-      story: '닭고기는 단백질 섬유가 가늘고 연해서 다른 육류보다 소화 흡수가 훨씬 빠른 훌륭한 고기예요.\n\n구미봉곡초 영양선생님께서 달콤짭조름한 짜장 소스에 채소와 닭고기를 조화롭게 볶아내어, 밥과 함께 먹으면 에너지와 영양이 몸속으로 쏙쏙 흡수된답니다.',
+      story: '닭고기는 단백질 섬유가 가늘고 연해서 다른 육류보다 소화 흡수가 훨씬 빠른 훌륭한 고기예요.\n\n영양선생님께서 달콤짭조름한 짜장 소스에 채소와 닭고기를 조화롭게 볶아내어, 밥과 함께 먹으면 에너지와 영양이 몸속으로 쏙쏙 흡수된답니다.',
       nutrients: [
         { name: '필수 아미노산', benefit: '체내에서 합성되지 않는 필수 영양소로 성장과 두뇌 활동을 도와요.', verified: true },
         { name: '소화 흡수율 우수', benefit: '소고기나 돼지고기보다 지방이 적고 부드러워 위장에 부담이 적어요.', verified: true },
@@ -322,7 +322,7 @@
     playCorrectChime: function () {
       const ctx = this.getAudioContext();
       if (!ctx) return;
-      const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 (화려한 실로폰 코드)
+      const notes = [523.25, 659.25, 783.99, 1046.50];
       notes.forEach((freq, idx) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -345,7 +345,7 @@
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(329.63, ctx.currentTime); // E4 -> C4 부드러운 알림
+      osc.frequency.setValueAtTime(329.63, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(261.63, ctx.currentTime + 0.2);
 
       gain.gain.setValueAtTime(0.2, ctx.currentTime);
@@ -406,7 +406,9 @@
     jsonFileInput: document.getElementById('json-file-input'),
     btnReset: document.getElementById('btn-reset-form'),
 
-    // 나이스 연동 배너 요소
+    // 학교 검색 & 나이스 연동 배너 요소
+    currentSchoolDisplay: document.getElementById('current-school-display'),
+    btnOpenSchoolSearch: document.getElementById('btn-open-school-search'),
     schoolSyncStatus: document.getElementById('school-sync-status'),
     btnFetchNeis: document.getElementById('btn-fetch-neis'),
 
@@ -443,9 +445,14 @@
     presetListContainer: document.getElementById('preset-list-container'),
     toastContainer: document.getElementById('toast-container'),
 
-    // ========================================================================
-    // 스탠바이미(StanbyME) 전용 DOM 요소
-    // ========================================================================
+    // 학교 검색 모달
+    schoolSearchModal: document.getElementById('school-search-modal'),
+    btnCloseSchoolModal: document.getElementById('btn-close-school-modal'),
+    schoolKeywordInput: document.getElementById('school-keyword-input'),
+    btnExecuteSchoolSearch: document.getElementById('btn-execute-school-search'),
+    schoolSearchResults: document.getElementById('school-search-results'),
+
+    // 스탠바이미 전용 DOM 요소
     stanbymeKioskView: document.getElementById('stanbyme-kiosk-view'),
     stanbymeDateBadge: document.getElementById('stanbyme-date-badge'),
     stanbymeStarCount: document.getElementById('stanbyme-star-count'),
@@ -505,6 +512,25 @@
     DOM.btnTvFullscreen.addEventListener('click', openTvModal);
     DOM.tvModalCloseBtn.addEventListener('click', closeTvModal);
 
+    // 학교 검색 모달 이벤트
+    if (DOM.btnOpenSchoolSearch) DOM.btnOpenSchoolSearch.addEventListener('click', openSchoolSearchModal);
+    if (DOM.btnCloseSchoolModal) DOM.btnCloseSchoolModal.addEventListener('click', closeSchoolSearchModal);
+    if (DOM.schoolSearchModal) {
+      DOM.schoolSearchModal.addEventListener('click', (e) => {
+        if (e.target === DOM.schoolSearchModal) closeSchoolSearchModal();
+      });
+    }
+    if (DOM.btnExecuteSchoolSearch && DOM.schoolKeywordInput) {
+      DOM.btnExecuteSchoolSearch.addEventListener('click', () => {
+        searchSchoolByName(DOM.schoolKeywordInput.value);
+      });
+      DOM.schoolKeywordInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          searchSchoolByName(DOM.schoolKeywordInput.value);
+        }
+      });
+    }
+
     // 스탠바이미 오픈/닫기 버튼
     if (DOM.btnOpenStanbyme) DOM.btnOpenStanbyme.addEventListener('click', openStanbymeKiosk);
     if (DOM.btnStanbymeToolbar) DOM.btnStanbymeToolbar.addEventListener('click', openStanbymeKiosk);
@@ -533,6 +559,7 @@
       if (e.key === 'Escape') {
         closeTvModal();
         closePresetModal();
+        closeSchoolSearchModal();
         closeStanbymeKiosk();
       }
     });
@@ -558,25 +585,128 @@
     // 2. 프리셋 리스트 렌더링
     renderPresetModalList();
 
-    // 3. 구미봉곡초등학교 오늘의 급식 자동 연동 실행
+    // 3. 현재 학교 표시 업데이트 및 오늘의 급식 자동 연동 실행
+    updateSchoolDisplay();
     DOM.dateInput.value = state.date;
     fetchNeisMeal(state.date);
 
-    // 4. URL에 #stanbyme 또는 ?mode=stanbyme가 있으면 스탠바이미 모드로 자동 진입
+    // 4. URL에 #stanbyme가 있으면 스탠바이미 모드로 자동 진입
     if (window.location.hash === '#stanbyme' || window.location.search.includes('stanbyme')) {
       setTimeout(openStanbymeKiosk, 600);
     }
   }
 
   // ==========================================================================
-  // 7. 스탠바이미(StanbyME) 전용 인터랙티브 키오스크 컨트롤러
+  // 7. 전국 학교 검색 기능 (교육부 나이스 schoolInfo API)
+  // ==========================================================================
+  async function searchSchoolByName(keyword) {
+    if (!keyword || !keyword.trim()) {
+      showToast('검색할 학교 이름을 입력해주세요.', 'warning');
+      return;
+    }
+
+    DOM.schoolSearchResults.innerHTML = '<p style="text-align: center; color: var(--color-mint-primary); padding: 2rem 0; font-weight: 700;">🔄 나이스(NEIS)에서 학교를 검색하는 중입니다...</p>';
+
+    const url = `https://open.neis.go.kr/hub/schoolInfo?Type=json&SCHUL_NM=${encodeURIComponent(keyword.trim())}`;
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (data && data.schoolInfo && data.schoolInfo[1] && data.schoolInfo[1].row) {
+        const schools = data.schoolInfo[1].row;
+        renderSchoolSearchResults(schools);
+      } else {
+        DOM.schoolSearchResults.innerHTML = '<p style="text-align: center; color: #dc2626; padding: 2rem 0; font-weight: 600;">검색 결과가 없습니다. 학교명을 다시 확인해주세요.</p>';
+      }
+    } catch (err) {
+      DOM.schoolSearchResults.innerHTML = '<p style="text-align: center; color: #dc2626; padding: 2rem 0; font-weight: 600;">학교 검색 중 오류가 발생했습니다. 네트워크를 확인하세요.</p>';
+    }
+  }
+
+  function renderSchoolSearchResults(schools) {
+    DOM.schoolSearchResults.innerHTML = '';
+
+    schools.forEach(sch => {
+      const card = document.createElement('div');
+      card.className = 'preset-card-item';
+      card.style.display = 'flex';
+      card.style.justifyContent = 'space-between';
+      card.style.alignItems = 'center';
+      card.style.background = '#ffffff';
+
+      const info = document.createElement('div');
+      info.style.display = 'flex';
+      info.style.flexDirection = 'column';
+      info.style.gap = '0.2rem';
+
+      const title = document.createElement('span');
+      title.className = 'preset-card-name';
+      title.textContent = sch.SCHUL_NM;
+
+      const sub = document.createElement('span');
+      sub.className = 'preset-card-tag';
+      sub.textContent = `${sch.ATPT_OFCDC_SC_NM} · ${sch.LCTN_SC_NM} (${sch.SCHUL_KND_SC_NM || '학교'}) - ${sch.ORG_RDNMA || ''}`;
+
+      info.appendChild(title);
+      info.appendChild(sub);
+
+      const selectBtn = document.createElement('button');
+      selectBtn.type = 'button';
+      selectBtn.className = 'btn btn-primary btn-sm';
+      selectBtn.textContent = '이 학교 선택';
+
+      card.appendChild(info);
+      card.appendChild(selectBtn);
+
+      card.addEventListener('click', () => {
+        SoundFX.playTouchPop();
+        currentSchool = {
+          name: sch.SCHUL_NM,
+          officeCode: sch.ATPT_OFCDC_SC_CODE,
+          schoolCode: sch.SD_SCHUL_CODE,
+          location: sch.LCTN_SC_NM
+        };
+        closeSchoolSearchModal();
+        updateSchoolDisplay();
+        fetchNeisMeal(state.date);
+        showToast(`[${sch.SCHUL_NM}] 식단을 나이스에서 불러옵니다!`, 'success');
+      });
+
+      DOM.schoolSearchResults.appendChild(card);
+    });
+  }
+
+  function updateSchoolDisplay() {
+    if (DOM.currentSchoolDisplay) {
+      DOM.currentSchoolDisplay.textContent = `🏫 ${currentSchool.name}`;
+    }
+    const stanbymeTag = document.querySelector('.stanbyme-school-tag span:last-child');
+    if (stanbymeTag) {
+      stanbymeTag.textContent = `${currentSchool.name} 오늘의 식생활 탐험대`;
+    }
+    const previewBadge = document.querySelector('.card-school-badge span:last-child');
+    if (previewBadge) {
+      previewBadge.textContent = `${currentSchool.name} 오늘의 급식 식생활 이야기`;
+    }
+  }
+
+  function openSchoolSearchModal() {
+    SoundFX.playTouchPop();
+    if (DOM.schoolSearchModal) DOM.schoolSearchModal.classList.add('active');
+  }
+
+  function closeSchoolSearchModal() {
+    if (DOM.schoolSearchModal) DOM.schoolSearchModal.classList.remove('active');
+  }
+
+  // ==========================================================================
+  // 8. 스탠바이미(StanbyME) 전용 인터랙티브 키오스크 컨트롤러
   // ==========================================================================
   function openStanbymeKiosk() {
     SoundFX.playTouchPop();
     DOM.stanbymeKioskView.classList.add('active');
     document.body.style.overflow = 'hidden';
 
-    // URL 해시 동기화 (기기 즐겨찾기/새로고침 시에도 유지)
     if (window.location.hash !== '#stanbyme') {
       window.location.hash = 'stanbyme';
     }
@@ -602,33 +732,23 @@
     });
   }
 
-  /**
-   * 학생이 식단 메뉴 버튼을 터치했을 때 즉시 음식 이야기 & 퀴즈 전환
-   */
   function selectDish(menuName) {
     SoundFX.playTouchPop();
     state.selectedMenu = menuName;
     DOM.selectedMenuSelect.value = menuName;
 
-    // 해당 음식에 맞춘 이야기 및 퀴즈 자동 구성
     applyFoodStoryAndQuiz(menuName);
 
-    // 폼 동기화
     DOM.storyInput.value = state.story;
     syncQuizInputsFromState();
 
-    // 화면 갱신
     renderPreview();
     if (DOM.stanbymeKioskView.classList.contains('active')) {
       renderStanbymeKiosk();
     }
   }
 
-  /**
-   * 스탠바이미 뷰 실시간 렌더링
-   */
   function renderStanbymeKiosk() {
-    // 1. 날짜 및 별점 카운터
     const formattedDate = formatDateKorean(state.date);
     if (DOM.stanbymeDateBadge) {
       DOM.stanbymeDateBadge.textContent = `${formattedDate} 식단`;
@@ -637,7 +757,6 @@
       DOM.stanbymeStarCount.textContent = state.starsCollected;
     }
 
-    // 2. 가로 터치 식단 리본 렌더링
     DOM.stanbymeDishList.innerHTML = '';
     state.allMenus.forEach(menu => {
       const btn = document.createElement('button');
@@ -656,13 +775,11 @@
       DOM.stanbymeDishList.appendChild(btn);
     });
 
-    // 3. 좌측: 대형 음식 탐구 카드
     const curMatched = findKnowledgeForDish(state.selectedMenu);
     if (DOM.stanbymeHeroIcon) DOM.stanbymeHeroIcon.textContent = curMatched ? curMatched.icon : '🍽️';
     if (DOM.stanbymeHeroTitle) DOM.stanbymeHeroTitle.textContent = state.selectedMenu || '오늘의 급식';
     if (DOM.stanbymeStoryText) DOM.stanbymeStoryText.textContent = state.story;
 
-    // 4. 우측: 영양소 카드 그리드
     DOM.stanbymeNutrientGrid.innerHTML = '';
     const validNutrients = state.nutrients.filter(n => n.name && n.name.trim());
     if (validNutrients.length > 0) {
@@ -677,7 +794,6 @@
       });
     }
 
-    // 5. 우측: 대형 인터랙티브 퀴즈
     renderStanbymeQuiz();
   }
 
@@ -706,7 +822,6 @@
       const statusSpan = document.createElement('span');
       statusSpan.style.fontSize = '1.35rem';
 
-      // 터치 결과 피드백
       if (state.userSelectedQuizAnswer !== null) {
         if (idx === state.quiz.correctIndex) {
           btn.classList.add('correct');
@@ -764,15 +879,15 @@
   }
 
   // ==========================================================================
-  // 8. 교육부 나이스(NEIS) 오픈 API 구미봉곡초등학교 실시간 급식 연동
+  // 9. 교육부 나이스(NEIS) 오픈 API 실시간 급식 연동
   // ==========================================================================
   async function fetchNeisMeal(dateString) {
     if (!dateString) return;
 
     const ymd = dateString.replace(/-/g, '');
-    updateSyncStatus('loading', '🔄 구미봉곡초등학교 급식 조회 중...');
+    updateSyncStatus('loading', `🔄 ${currentSchool.name} 급식 조회 중...`);
 
-    const apiUrl = `https://open.neis.go.kr/hub/mealServiceDietInfo?Type=json&ATPT_OFCDC_SC_CODE=${SCHOOL_CONFIG.officeCode}&SD_SCHUL_CODE=${SCHOOL_CONFIG.schoolCode}&MLSV_YMD=${ymd}`;
+    const apiUrl = `https://open.neis.go.kr/hub/mealServiceDietInfo?Type=json&ATPT_OFCDC_SC_CODE=${currentSchool.officeCode}&SD_SCHUL_CODE=${currentSchool.schoolCode}&MLSV_YMD=${ymd}`;
 
     try {
       const response = await fetch(apiUrl);
@@ -808,13 +923,8 @@
     state.allMenusText = cleanMenus.join(', ');
     state.calorie = row.CAL_INFO ? row.CAL_INFO.trim() : '';
 
-    // 첫 번째 주요 메뉴 선택
     state.selectedMenu = pickBestHeroMenu(cleanMenus);
-
-    // 나이스 검증 영양소 파싱
     state.nutrients = parseNeisNutrients(row.NTR_INFO);
-
-    // 음식 이야기 & 퀴즈 매칭
     applyFoodStoryAndQuiz(state.selectedMenu);
 
     syncFormFromState();
@@ -824,12 +934,12 @@
     }
 
     const calNotice = state.calorie ? ` (${state.calorie})` : '';
-    updateSyncStatus('success', `✅ 구미봉곡초 급식 정상 연동${calNotice}`);
-    showToast(`[구미봉곡초] ${formatDateKorean(dateString)} 급식 식단을 성공적으로 불러왔습니다!`, 'success');
+    updateSyncStatus('success', `✅ ${currentSchool.name} 급식 연동 성공${calNotice}`);
+    showToast(`[${currentSchool.name}] ${formatDateKorean(dateString)} 식단을 정상 불러왔습니다!`, 'success');
   }
 
   async function handleNoMealDay(dateString) {
-    updateSyncStatus('warning', `⚠️ ${dateString}은 구미봉곡초 급식이 없는 날(주말/휴일)입니다.`);
+    updateSyncStatus('warning', `⚠️ ${dateString}은 ${currentSchool.name} 급식이 없는 날(주말/휴일)입니다.`);
 
     const dayOfWeek = new Date(dateString).getDay();
     if (dayOfWeek === 0 || dayOfWeek === 6) {
@@ -839,7 +949,7 @@
       DOM.dateInput.value = recentFriday;
       fetchNeisMeal(recentFriday);
     } else {
-      showToast(`${dateString}은 구미봉곡초 급식이 등록되지 않은 날(방학/학사일정)입니다.`, 'warning');
+      showToast(`${dateString}은 ${currentSchool.name} 급식이 등록되지 않은 날(방학/학사일정)입니다.`, 'warning');
       renderPreview();
     }
   }
@@ -857,7 +967,7 @@
 
   function pickBestHeroMenu(menus) {
     if (!menus || menus.length === 0) return '오늘의 대표 메뉴';
-    const priorityKeywords = ['꽃게', '스테이크', '불고기', '갈비', '삼치', '닭', '돈가스', '탕', '찌개', '비빔밥', '카레', '마파두부', '미역국', '생선'];
+    const priorityKeywords = ['꽃게', '도라지', '혼합밥', '잡곡밥', '밥', '스테이크', '불고기', '갈비', '삼치', '닭', '돈가스', '탕', '찌개', '비빔밥', '카레', '마파두부', '미역국', '생선'];
 
     for (const kw of priorityKeywords) {
       const found = menus.find(m => m.includes(kw));
@@ -882,7 +992,7 @@
 
     const nutrientMap = {
       '단백질': '성장기 근육 형성과 면역 세포를 만드는 필수 영양소예요.',
-      '칼슘': '뼈와 치아를 단단하게 구성하고 키 성장을 도와줘요.',
+      '칼슘': '뼈와 치아를 단단하게 구성하고 키 성장을 도와요.',
       '비타민A': '어두운 곳에서도 시력을 지켜주고 피부 건강을 도와요.',
       '비타민C': '몸속 활성산소를 억제하고 감기 등 바이러스를 막아줘요.',
       '철분': '혈액 속 산소를 온몸으로 운반해 활기찬 에너지를 줘요.',
@@ -911,7 +1021,7 @@
     });
 
     return parsed.length > 0 ? parsed.slice(0, 4) : [
-      { name: '검증된 영양소', benefit: '구미봉곡초 영양선생님의 균형 잡힌 식단입니다.', verified: true }
+      { name: '검증된 영양소', benefit: '영양선생님의 균형 잡힌 식단입니다.', verified: true }
     ];
   }
 
@@ -920,9 +1030,6 @@
     return FOOD_KNOWLEDGE_BASE.find(item => item.keywords.some(kw => dishName.includes(kw)));
   }
 
-  /**
-   * 메뉴에 맞춘 흥미로운 음식 이야기 및 학년별 퀴즈 적용
-   */
   function applyFoodStoryAndQuiz(menuName) {
     const matched = findKnowledgeForDish(menuName);
 
@@ -936,17 +1043,16 @@
         explanation: q.explanation
       };
     } else {
-      // 맞춤 매칭이 없는 경우 지능형 초등 식생활 이야기 생성
-      state.story = `오늘 구미봉곡초등학교 급식의 맛있는 음식은 바로 [${menuName}]입니다!\n\n영양선생님께서 우리 친구들이 건강하고 튼튼하게 자라도록 신선하고 좋은 재료로 정성껏 준비해 주셨어요. 한 입 한 입 꼭꼭 씹어 먹으면 우리 몸에 필요한 활력 에너지가 샘솟는답니다.`;
+      state.story = `오늘 ${currentSchool.name} 급식의 맛있는 음식은 바로 [${menuName}]입니다!\n\n영양선생님께서 우리 친구들이 건강하고 튼튼하게 자라도록 신선하고 좋은 재료로 정성껏 준비해 주셨어요. 한 입 한 입 꼭꼭 씹어 먹으면 우리 몸에 필요한 활력 에너지가 샘솟는답니다.`;
       state.quiz = {
-        question: `오늘 구미봉곡초 식단인 [${menuName}]을 올바르고 건강하게 먹는 방법은?`,
+        question: `오늘 급식 식단인 [${menuName}]을 올바르고 건강하게 먹는 방법은?`,
         options: [
           '밥과 다른 반찬들과 함께 골고루 섭취한다',
           '좋아하는 것만 골라 먹고 나머지는 버린다',
           '씹지 않고 급하게 삼킨다'
         ],
         correctIndex: 0,
-        explanation: `${menuName}은(는) 다양한 영양소로 조리되어 다른 음식과 골고루 먹을 때 가장 좋습니다.`
+        explanation: `${menuName}은(는) 다양한 영양소로 조리되어 다른 음식과 골고루 먹을 때 우리 몸에 가장 좋습니다.`
       };
     }
 
@@ -960,7 +1066,7 @@
   }
 
   // ==========================================================================
-  // 9. 폼 & 상태 동기화 핸들러
+  // 10. 폼 & 상태 동기화 핸들러
   // ==========================================================================
   function onDateChange(e) {
     const newDate = e.target.value.trim();
@@ -1055,7 +1161,7 @@
   }
 
   // ==========================================================================
-  // 10. 영양소 동적 행 관리 (추가, 수정, 삭제)
+  // 11. 영양소 동적 행 관리 (추가, 수정, 삭제)
   // ==========================================================================
   function addNutrientItem(name = '', benefit = '', verified = true) {
     const item = { name, benefit, verified };
@@ -1121,7 +1227,7 @@
   }
 
   // ==========================================================================
-  // 11. 추천 메뉴 모달 및 수동 선택
+  // 12. 추천 메뉴 모달 및 수동 선택
   // ==========================================================================
   function renderPresetModalList() {
     const container = DOM.presetListContainer;
@@ -1176,7 +1282,7 @@
   }
 
   // ==========================================================================
-  // 12. 폼 UI 동기화 (State -> Form UI)
+  // 13. 폼 UI 동기화 (State -> Form UI)
   // ==========================================================================
   function syncFormFromState() {
     DOM.dateInput.value = state.date;
@@ -1206,16 +1312,14 @@
   }
 
   // ==========================================================================
-  // 13. 실시간 미리보기 렌더링 (학생 터치 지원 칩 연결)
+  // 14. 실시간 미리보기 렌더링 (학생 터치 지원 칩 연결)
   // ==========================================================================
   function renderPreview() {
     const card = DOM.previewCard;
 
-    // 1. 학년별 클래스 토글
     card.classList.remove('grade-lower', 'grade-middle', 'grade-upper');
     card.classList.add(`grade-${state.gradeGroup}`);
 
-    // 2. 일자 및 배지 렌더링
     const formattedDate = formatDateKorean(state.date);
     DOM.previewDateText.textContent = formattedDate ? `${formattedDate} 오늘의 급식 이야기` : '날짜를 입력해주세요';
     DOM.previewGradeBadge.textContent = getGradeGroupLabel(state.gradeGroup);
@@ -1227,7 +1331,6 @@
       DOM.previewCalorieBadge.style.display = 'none';
     }
 
-    // 3. 전체 메뉴 바 (클릭/터치 가능한 메뉴 칩으로 렌더링!)
     DOM.previewMenuList.innerHTML = '';
     if (state.allMenus.length > 0) {
       DOM.previewMenuBar.style.display = 'flex';
@@ -1254,17 +1357,14 @@
       DOM.previewMenuBar.style.display = 'none';
     }
 
-    // 4. 오늘의 주인공 메뉴
     const heroMenuName = state.selectedMenu || (state.allMenus[0] || '오늘의 급식 메뉴');
     DOM.previewHeroTitle.textContent = heroMenuName;
 
     const matchedKnowledge = findKnowledgeForDish(heroMenuName);
     DOM.previewHeroIcon.textContent = matchedKnowledge ? matchedKnowledge.icon : '🍽️';
 
-    // 5. 음식 이야기
-    DOM.previewStoryText.textContent = state.story || '맛있고 영양 가득한 구미봉곡초등학교 급식 시간 되세요!';
+    DOM.previewStoryText.textContent = state.story || `맛있고 영양 가득한 ${currentSchool.name} 급식 시간 되세요!`;
 
-    // 6. 영양 정보 그리드
     DOM.previewNutrientGrid.innerHTML = '';
     const validNutrients = state.nutrients.filter(n => n.name && n.name.trim());
 
@@ -1292,10 +1392,8 @@
       DOM.previewNutrientGrid.appendChild(warnDiv);
     }
 
-    // 7. 퀴즈 상호작용 카드
     renderQuizInteractive();
 
-    // 8. TV 모달 동기화
     if (DOM.tvModal.classList.contains('active')) {
       syncTvModalContent();
     }
@@ -1376,7 +1474,7 @@
   }
 
   // ==========================================================================
-  // 14. TV 전체화면 모달 송출 기능
+  // 15. TV 전체화면 모달 송출 기능
   // ==========================================================================
   function openTvModal() {
     if (!state.date || !state.selectedMenu) {
@@ -1415,7 +1513,7 @@
   }
 
   // ==========================================================================
-  // 15. JSON 내보내기 & 불러오기 (데이터 보관)
+  // 16. JSON 내보내기 & 불러오기 (데이터 보관)
   // ==========================================================================
   function exportDataAsJson() {
     if (!state.date || !state.selectedMenu) {
@@ -1425,7 +1523,7 @@
 
     const payload = {
       app: 'nutrition-edu-generator',
-      school: SCHOOL_CONFIG.name,
+      school: currentSchool.name,
       version: '1.0',
       exportedAt: new Date().toISOString(),
       date: state.date,
@@ -1446,7 +1544,7 @@
     const safeDate = state.date.replace(/-/g, '');
     const safeMenu = state.selectedMenu.replace(/\s+/g, '_');
     a.href = url;
-    a.download = `구미봉곡초_급식영양자료_${safeDate}_${safeMenu}.json`;
+    a.download = `${currentSchool.name}_급식영양자료_${safeDate}_${safeMenu}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1537,7 +1635,7 @@
   }
 
   // ==========================================================================
-  // 16. 인쇄 및 Canvas 2D 고해상도 PNG 이미지 다운로드 엔진
+  // 17. 인쇄 및 Canvas 2D 고해상도 PNG 이미지 다운로드 엔진
   // ==========================================================================
   function handlePrint() {
     if (!state.date || !state.selectedMenu) {
@@ -1561,30 +1659,25 @@
       canvas.width = width;
       canvas.height = height;
 
-      // 1. 전체 배경
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, width, height);
 
-      // 상단 민트 바
       ctx.fillStyle = '#0d9488';
       ctx.fillRect(0, 0, width, 14);
 
-      // 외곽 프레임
       ctx.strokeStyle = '#99f6e4';
       ctx.lineWidth = 4;
       ctx.strokeRect(40, 40, width - 80, height - 80);
 
-      // 2. 헤더: 학교/날짜/학년
       ctx.fillStyle = '#0d9488';
       ctx.font = 'bold 26px sans-serif';
-      ctx.fillText('🏫 구미봉곡초등학교 오늘의 급식 식생활 이야기', 70, 95);
+      ctx.fillText(`🏫 ${currentSchool.name} 오늘의 급식 식생활 이야기`, 70, 95);
 
       ctx.fillStyle = '#0f172a';
       ctx.font = 'bold 44px sans-serif';
       const formattedDate = formatDateKorean(state.date);
       ctx.fillText(formattedDate ? `${formattedDate} 급식 이야기` : '오늘의 급식 이야기', 70, 155);
 
-      // 대상 학년 배지 박스
       ctx.fillStyle = '#e6f7f3';
       ctx.fillRect(width - 340, 105, 270, 50);
       ctx.strokeStyle = '#2dd4bf';
@@ -1597,7 +1690,6 @@
       ctx.fillText(getGradeGroupLabel(state.gradeGroup), width - 205, 138);
       ctx.textAlign = 'left';
 
-      // 구분 점선
       ctx.strokeStyle = '#cbd5e1';
       ctx.lineWidth = 2;
       ctx.setLineDash([8, 8]);
@@ -1607,7 +1699,6 @@
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // 3. 전체 메뉴 바
       let currentY = 215;
       if (state.allMenus.length > 0) {
         ctx.fillStyle = '#f0fdfa';
@@ -1626,7 +1717,6 @@
         currentY += 80;
       }
 
-      // 4. 오늘의 주인공 음식 배너
       ctx.fillStyle = '#e6f7f3';
       ctx.fillRect(70, currentY, width - 140, 105);
       ctx.strokeStyle = '#2dd4bf';
@@ -1647,7 +1737,6 @@
       ctx.fillText(matchedKnowledge ? matchedKnowledge.icon : '🍽️', width - 165, currentY + 74);
       currentY += 135;
 
-      // 5. 음식 이야기 섹션
       ctx.fillStyle = '#0d9488';
       ctx.font = 'bold 28px sans-serif';
       ctx.fillText('📖 오늘의 음식 이야기', 70, currentY);
@@ -1662,7 +1751,6 @@
       });
       currentY += 25;
 
-      // 6. 영양 정보 섹션
       ctx.fillStyle = '#0d9488';
       ctx.font = 'bold 28px sans-serif';
       ctx.fillText('🥦 우리 몸을 튼튼하게 하는 영양 정보', 70, currentY);
@@ -1699,7 +1787,6 @@
       }
       currentY += 20;
 
-      // 7. 영양 퀴즈 섹션
       if (state.quiz.question.trim()) {
         ctx.fillStyle = '#0284c7';
         ctx.font = 'bold 28px sans-serif';
@@ -1737,18 +1824,17 @@
         }
       }
 
-      // 8. PNG 다운로드 실행
       const dataUrl = canvas.toDataURL('image/png');
       const a = document.createElement('a');
       const safeDate = state.date.replace(/-/g, '');
       const safeMenu = (state.selectedMenu || '급식').replace(/\s+/g, '_');
       a.href = dataUrl;
-      a.download = `구미봉곡초_영양교육자료_${safeDate}_${safeMenu}.png`;
+      a.download = `${currentSchool.name}_영양교육자료_${safeDate}_${safeMenu}.png`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
 
-      showToast('구미봉곡초 고해상도 PNG 이미지가 다운로드되었습니다.', 'success');
+      showToast(`${currentSchool.name} 고해상도 PNG 이미지가 다운로드되었습니다.`, 'success');
     } catch (err) {
       showToast(`이미지 저장 중 오류 발생: ${err.message}`, 'error');
     }
@@ -1780,7 +1866,7 @@
   }
 
   // ==========================================================================
-  // 17. 알림 토스트 UI 헬퍼
+  // 18. 알림 토스트 UI 헬퍼
   // ==========================================================================
   function showToast(message, type = 'info') {
     const toast = document.createElement('div');

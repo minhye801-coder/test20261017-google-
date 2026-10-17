@@ -83,12 +83,17 @@
           <!-- 구미봉곡초등학교 나이스(NEIS) 실시간 급식 자동 연동 배너 -->
           <div class="school-sync-banner">
             <div class="school-sync-info">
-              <span class="school-badge-tag">🏫 구미봉곡초등학교 급식 연동</span>
+              <span id="current-school-display" class="school-badge-tag">🏫 구미봉곡초등학교</span>
               <span id="school-sync-status" class="sync-status-text">교육부 나이스(NEIS) 실시간 급식 연동 중</span>
             </div>
-            <button type="button" id="btn-fetch-neis" class="btn btn-mint-light btn-sm" title="선택한 날짜의 구미봉곡초등학교 급식을 나이스에서 즉시 불러옵니다">
-              🔄 급식 다시 불러오기
-            </button>
+            <div style="display: flex; gap: 0.4rem;">
+              <button type="button" id="btn-open-school-search" class="btn btn-secondary btn-sm" title="다른 학교를 검색하여 급식을 가져옵니다">
+                🔍 학교 변경
+              </button>
+              <button type="button" id="btn-fetch-neis" class="btn btn-mint-light btn-sm" title="선택한 날짜의 급식을 나이스에서 즉시 불러옵니다">
+                🔄 새로고침
+              </button>
+            </div>
           </div>
         </div>
 
@@ -360,6 +365,29 @@
         </div>
         <div id="preset-list-container" class="preset-modal-body">
           <!-- 자바스크립트로 10종 메뉴 카드 렌더링 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================================================================
+         모달 3: 전국 학교 검색 및 선택 모달 (나이스 오픈API 연동)
+         =================================================================== -->
+    <div id="school-search-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="전국 학교 검색">
+      <div class="preset-modal-container" style="max-width: 640px;">
+        <div class="preset-modal-header">
+          <h3>🏫 전국 학교 검색 (나이스 실시간 연동)</h3>
+          <button type="button" id="btn-close-school-modal" class="btn btn-secondary btn-sm">
+            ✕ 닫기
+          </button>
+        </div>
+        <div style="padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="text" id="school-keyword-input" class="form-control" placeholder="학교 이름을 입력하세요 (예: 봉곡초, 서울초, 해운대초)" />
+            <button type="button" id="btn-execute-school-search" class="btn btn-primary" style="white-space: nowrap;">🔍 학교 검색</button>
+          </div>
+          <div id="school-search-results" style="max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.75rem; background: var(--color-bg-canvas);">
+            <p style="text-align: center; color: var(--color-text-soft); padding: 2rem 0; font-size: 0.92rem;">찾으실 학교 이름을 입력하고 [학교 검색] 버튼을 누르세요.</p>
+          </div>
         </div>
       </div>
     </div>
